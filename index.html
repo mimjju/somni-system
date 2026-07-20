@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>솜리 베이킹실 통합 관리 시스템</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --bg: #fbf5ec;
@@ -173,11 +174,9 @@
       <h2 style="margin-bottom:14px">솜리 베이킹실</h2>
       <div class="hint" id="lock-hint" style="margin:-6px 0 14px">비밀번호를 입력하세요</div>
       <input id="lock-password" type="password" placeholder="비밀번호" style="text-align:center; font-size:16px; letter-spacing:3px; margin-bottom:10px" autocomplete="off">
-      <input id="lock-password-confirm" type="password" placeholder="비밀번호 확인" style="text-align:center; font-size:16px; letter-spacing:3px; margin-bottom:10px; display:none" autocomplete="off">
-      <button class="primary" style="width:100%" onclick="submitLockScreen()">확인</button>
+      <button class="primary" id="lock-submit-btn" style="width:100%" onclick="submitLockScreen()">확인</button>
       <div id="lock-error" class="warn" style="margin-top:10px; min-height:14px"></div>
       <a href="cafe-pickup.html" style="display:block; margin-top:16px; font-size:13px; color:var(--sub); text-decoration:none">📦 카페에서 오셨나요? 출고 등록하러 가기 →</a>
-      <a href="javascript:void(0)" onclick="resetPinsOnly()" style="display:block; margin-top:8px; font-size:12px; color:var(--sub); text-decoration:none">비밀번호를 잊으셨나요? (비밀번호만 초기화, 재료·레시피·재고 데이터는 그대로 유지됩니다)</a>
     </div>
   </div>
 
@@ -489,27 +488,18 @@
     </div>
 
     <div class="card">
-      <h2>데이터 백업 / 이동</h2>
-      <div class="hint">재료·레시피·재고·업무일지·카페·출고 데이터를 파일로 저장하거나 불러옵니다. 비밀번호는 포함되지 않아요 (기기마다 따로 설정). 로컬 파일에서 도메인으로 데이터를 옮길 때도 이걸 쓰세요: 옮길 곳에서 내보내기 → 옮겨갈 곳에서 불러오기.</div>
+      <h2>데이터 백업 / 이전</h2>
+      <div class="hint">지금 서버(Supabase)에 있는 데이터를 파일로 저장합니다. "예전 백업 파일 가져오기"는 이전 로컬/localStorage 버전에서 받아둔 백업 파일을 딱 한 번 서버로 옮길 때만 쓰세요 — 누를 때마다 새로 추가되니 반복 실행하지 마세요.</div>
       <div class="field-row">
         <button class="primary" onclick="exportData()">📥 백업 파일 다운로드</button>
-        <button class="secondary" onclick="document.getElementById('import-file-input').click()">📤 백업 파일 불러오기</button>
-        <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="importDataFile(this)">
+        <button class="secondary" onclick="document.getElementById('import-file-input').click()">📤 예전 백업 파일 가져오기</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="importLegacyBackup(this)">
       </div>
     </div>
 
     <div class="card">
-      <h2>직원 비밀번호 관리</h2>
-      <div class="hint">재고관리·재고 현황·발주입고·업무일지에 들어올 때 직원이 쓰는 비밀번호입니다. 레시피등록·제품원가·월간대시보드·직원 시급은 관리자 비밀번호로만 열립니다.</div>
-      <div class="field-row" style="align-items:flex-end">
-        <div class="field">
-          <label>새 직원 비밀번호</label>
-          <input id="staff-pin-input" type="password" placeholder="4자리 이상">
-        </div>
-        <div class="field" style="max-width:120px">
-          <button class="primary" onclick="setStaffPin()">저장</button>
-        </div>
-      </div>
+      <h2>계정 안내</h2>
+      <div class="hint">비밀번호 변경은 Supabase 대시보드 → Authentication → Users에서 admin@somri.local / staff@somri.local 계정을 선택해 직접 바꿔주세요. 이 앱 안에서는 더 이상 비밀번호를 관리하지 않습니다.</div>
     </div>
 
     <div class="card">
@@ -543,28 +533,19 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const LS_ING = 'somni_ingredients_v1';
-const LS_RECIPE = 'somni_recipes_v1';
-const LS_STOCK_LOG = 'somni_stock_logs_v1';
-const LS_EMPLOYEE = 'somni_employees_v1';
-const LS_CAFE = 'somni_cafes_v1';
-const LS_WORKLOG = 'somni_worklogs_v1';
-const LS_SHIPMENT = 'somni_shipments_v1';
-const LS_ADMIN_PIN = 'somni_admin_pin_v1';
-const LS_STAFF_PIN = 'somni_staff_pin_v1';
+const SUPABASE_URL = 'https://gxhueytibwxgvrelsfku.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_DI4x1BPSCEATAFpvtph02A_6PQbgOJI';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const ADMIN_EMAIL = 'admin@somri.local';
+const STAFF_EMAIL = 'staff@somri.local';
 
-let ingredients = loadJSON(LS_ING, []);
-let recipes = loadJSON(LS_RECIPE, []);
-let stockLogs = loadJSON(LS_STOCK_LOG, []);
-let employees = loadJSON(LS_EMPLOYEE, []);
-let cafes = loadJSON(LS_CAFE, null);
-let workLogs = loadJSON(LS_WORKLOG, []);
-let shipments = loadJSON(LS_SHIPMENT, []);
-
-if (cafes === null) {
-  cafes = [{ id: uid(), name: '시트러스' }, { id: uid(), name: '차와' }];
-  localStorage.setItem(LS_CAFE, JSON.stringify(cafes));
-}
+let ingredients = [];
+let recipes = [];
+let stockLogs = [];
+let employees = [];
+let cafes = [];
+let workLogs = [];
+let shipments = [];
 
 let editingIngredientId = null;
 let editingRecipeId = null;
@@ -574,74 +555,62 @@ let editingWorkLogId = null;
 let adminMode = false;
 let staffMode = false;
 
-// ---------- Lock screen ----------
+// ---------- Lock screen / auth ----------
 function initLockScreen() {
-  const adminPin = localStorage.getItem(LS_ADMIN_PIN);
-  const hint = document.getElementById('lock-hint');
-  const confirmInput = document.getElementById('lock-password-confirm');
-  if (!adminPin) {
-    hint.textContent = '처음 사용이시군요. 관리자 비밀번호를 새로 설정해주세요 (4자리 이상).';
-    confirmInput.style.display = 'block';
-  } else {
-    hint.textContent = '비밀번호를 입력하세요.';
-    confirmInput.style.display = 'none';
-  }
+  document.getElementById('lock-hint').textContent = '비밀번호를 입력하세요.';
   document.getElementById('lock-password').value = '';
-  confirmInput.value = '';
   document.getElementById('lock-error').textContent = '';
   document.getElementById('lock-password').focus();
 }
 
-function resetPinsOnly() {
-  const ok = confirm('관리자 비밀번호와 직원 비밀번호를 초기화합니다. 재료·레시피·재고·업무일지 등 나머지 데이터는 전혀 건드리지 않습니다. 계속할까요?');
-  if (!ok) return;
-  localStorage.removeItem(LS_ADMIN_PIN);
-  localStorage.removeItem(LS_STAFF_PIN);
-  toast('비밀번호가 초기화되었습니다. 관리자 비밀번호를 새로 설정해주세요.');
-  initLockScreen();
-}
-
-function submitLockScreen() {
+async function submitLockScreen() {
   const pw = document.getElementById('lock-password').value;
-  const adminPin = localStorage.getItem(LS_ADMIN_PIN);
   const errEl = document.getElementById('lock-error');
+  const btn = document.getElementById('lock-submit-btn');
+  if (!pw) { errEl.textContent = '비밀번호를 입력해주세요.'; return; }
 
-  if (!adminPin) {
-    const confirmPw = document.getElementById('lock-password-confirm').value;
-    if (!pw || pw.length < 4) { errEl.textContent = '4자리 이상 입력해주세요.'; return; }
-    if (pw !== confirmPw) { errEl.textContent = '비밀번호가 서로 다릅니다.'; return; }
-    localStorage.setItem(LS_ADMIN_PIN, pw);
+  btn.disabled = true;
+  btn.textContent = '확인 중...';
+
+  let { data, error } = await sb.auth.signInWithPassword({ email: ADMIN_EMAIL, password: pw });
+  if (!error && data.session) {
     adminMode = true;
-    unlockApp();
-    toast('관리자 비밀번호가 설정되었습니다.');
+    await unlockApp();
+    btn.disabled = false;
+    btn.textContent = '확인';
     return;
   }
 
-  if (pw === adminPin) {
-    adminMode = true;
-    unlockApp();
-    return;
-  }
-  const staffPin = localStorage.getItem(LS_STAFF_PIN);
-  if (staffPin && pw === staffPin) {
+  ({ data, error } = await sb.auth.signInWithPassword({ email: STAFF_EMAIL, password: pw }));
+  if (!error && data.session) {
     staffMode = true;
-    unlockApp();
+    await unlockApp();
+    btn.disabled = false;
+    btn.textContent = '확인';
     return;
   }
+
   errEl.textContent = '비밀번호가 일치하지 않습니다.';
   document.getElementById('lock-password').value = '';
   document.getElementById('lock-password').focus();
+  btn.disabled = false;
+  btn.textContent = '확인';
 }
 document.getElementById('lock-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitLockScreen(); });
-document.getElementById('lock-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') submitLockScreen(); });
 
-function unlockApp() {
+async function unlockApp() {
+  await loadAllData();
   document.getElementById('lock-screen').style.display = 'none';
   document.getElementById('app-content').style.display = 'block';
   applyAdminVisibility();
+  renderIngredients();
+  populateIngredientSelect();
+  renderRecipeItems();
+  switchTab('inventory');
 }
 
-function lockApp() {
+async function lockApp() {
+  await sb.auth.signOut();
   adminMode = false;
   staffMode = false;
   document.getElementById('app-content').style.display = 'none';
@@ -649,54 +618,70 @@ function lockApp() {
   initLockScreen();
 }
 
-function setStaffPin() {
-  const pin = document.getElementById('staff-pin-input').value;
-  if (!pin || pin.length < 4) { toast('4자리 이상 입력해주세요.'); return; }
-  localStorage.setItem(LS_STAFF_PIN, pin);
-  document.getElementById('staff-pin-input').value = '';
-  toast('직원 비밀번호가 저장되었습니다.');
+// ---------- Data loading (Supabase) ----------
+function mapIngredient(r) {
+  return { id: r.id, name: r.name, purchaseQty: r.purchase_qty, purchaseUnit: r.purchase_unit, purchasePrice: r.purchase_price, stock: r.stock, minStock: r.min_stock };
+}
+function mapRecipe(r, itemsByRecipe) {
+  return { id: r.id, name: r.name, yieldQty: r.yield_qty, packLabel: r.pack_label, packSize: r.pack_size, items: (itemsByRecipe[r.id] || []).map(it => ({ ingredientId: it.ingredient_id, amount: it.amount })) };
+}
+function mapStockLog(r) {
+  return { id: r.id, ingredientId: r.ingredient_id, ingredientName: r.ingredient_name, unit: r.unit, date: r.date, type: r.type, change: r.change, after: r.after, note: r.note };
+}
+function mapEmployee(r) {
+  return { id: r.id, name: r.name, hourlyWage: r.hourly_wage };
+}
+function mapWorkLog(r, stagesByLog) {
+  return { id: r.id, date: r.date, recipeId: r.recipe_id, batches: r.batches, loss: r.loss, note: r.note, stages: (stagesByLog[r.id] || []).map(s => ({ stageName: s.stage_name, employeeId: s.employee_id, timeMinutes: s.time_minutes })) };
+}
+function mapShipment(r) {
+  return { id: r.id, date: r.date, cafeId: r.cafe_id, recipeId: r.recipe_id, qty: r.qty, enteredQty: r.entered_qty, enteredUnit: r.entered_unit, unitCost: r.unit_cost, totalCost: r.total_cost };
 }
 
-// ---------- Data backup / restore ----------
-function exportData() {
-  const data = {};
-  [LS_ING, LS_RECIPE, LS_STOCK_LOG, LS_EMPLOYEE, LS_CAFE, LS_WORKLOG, LS_SHIPMENT].forEach(key => {
-    const val = localStorage.getItem(key);
-    if (val !== null) data[key] = val;
+async function loadAllData() {
+  const [ingRes, cafeRes, stockLogRes] = await Promise.all([
+    sb.from('ingredients').select('*'),
+    sb.from('cafes').select('*'),
+    sb.from('stock_logs').select('*').order('date', { ascending: false }).limit(300)
+  ]);
+  ingredients = (ingRes.data || []).map(mapIngredient);
+  cafes = (cafeRes.data || []).map(r => ({ id: r.id, name: r.name }));
+  stockLogs = (stockLogRes.data || []).map(mapStockLog);
+
+  const [recRes, itemsRes] = await Promise.all([
+    sb.from('recipes').select('*'),
+    sb.from('recipe_items').select('*')
+  ]);
+  const itemsByRecipe = {};
+  (itemsRes.data || []).forEach(it => {
+    (itemsByRecipe[it.recipe_id] = itemsByRecipe[it.recipe_id] || []).push(it);
   });
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `somni-backup-${todayStr()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast('백업 파일을 다운로드했습니다.');
-}
+  recipes = (recRes.data || []).map(r => mapRecipe(r, itemsByRecipe));
 
-function importDataFile(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    let data;
-    try {
-      data = JSON.parse(e.target.result);
-    } catch (err) {
-      toast('파일을 읽을 수 없습니다. 올바른 백업 파일인지 확인해주세요.');
-      return;
-    }
-    const ok = confirm('백업 파일을 불러오면 현재 이 기기에 있는 재료·레시피·재고·업무일지·카페·출고 데이터를 덮어씁니다. 계속할까요?');
-    if (!ok) return;
-    const allowedKeys = [LS_ING, LS_RECIPE, LS_STOCK_LOG, LS_EMPLOYEE, LS_CAFE, LS_WORKLOG, LS_SHIPMENT];
-    Object.entries(data).forEach(([key, val]) => {
-      if (allowedKeys.includes(key)) localStorage.setItem(key, val);
-    });
-    toast('데이터를 불러왔습니다. 새로고침합니다.');
-    setTimeout(() => location.reload(), 800);
-  };
-  reader.readAsText(file);
-  input.value = '';
+  if (adminMode) {
+    const [empRes, wlRes, stageRes, shipRes] = await Promise.all([
+      sb.from('employees').select('*'),
+      sb.from('work_logs').select('*'),
+      sb.from('work_log_stages').select('*'),
+      sb.from('shipments').select('*')
+    ]);
+    employees = (empRes.data || []).map(mapEmployee);
+    const stagesByLog = {};
+    (stageRes.data || []).forEach(s => { (stagesByLog[s.work_log_id] = stagesByLog[s.work_log_id] || []).push(s); });
+    workLogs = (wlRes.data || []).map(w => mapWorkLog(w, stagesByLog));
+    shipments = (shipRes.data || []).map(mapShipment);
+  } else {
+    const [empRes, wlRes, stageRes] = await Promise.all([
+      sb.rpc('list_employees_public'),
+      sb.from('work_logs').select('*'),
+      sb.from('work_log_stages').select('*')
+    ]);
+    employees = (empRes.data || []).map(r => ({ id: r.id, name: r.name, hourlyWage: 0 }));
+    const stagesByLog = {};
+    (stageRes.data || []).forEach(s => { (stagesByLog[s.work_log_id] = stagesByLog[s.work_log_id] || []).push(s); });
+    workLogs = (wlRes.data || []).map(w => mapWorkLog(w, stagesByLog));
+    shipments = [];
+  }
 }
 
 function applyAdminVisibility() {
@@ -710,23 +695,6 @@ function applyAdminVisibility() {
     if (activePanel && adminOnlyPanels.includes(activePanel.id)) switchTab('inventory');
   }
 }
-
-function loadJSON(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (e) {
-    console.error('load error', key, e);
-    return fallback;
-  }
-}
-function saveIngredients() { localStorage.setItem(LS_ING, JSON.stringify(ingredients)); }
-function saveRecipes() { localStorage.setItem(LS_RECIPE, JSON.stringify(recipes)); }
-function saveStockLogs() { localStorage.setItem(LS_STOCK_LOG, JSON.stringify(stockLogs)); }
-function saveEmployees() { localStorage.setItem(LS_EMPLOYEE, JSON.stringify(employees)); }
-function saveCafes() { localStorage.setItem(LS_CAFE, JSON.stringify(cafes)); }
-function saveWorkLogs() { localStorage.setItem(LS_WORKLOG, JSON.stringify(workLogs)); }
-function saveShipments() { localStorage.setItem(LS_SHIPMENT, JSON.stringify(shipments)); }
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
@@ -787,7 +755,7 @@ function todayStr() {
 }
 
 // ---------- Ingredients ----------
-function submitIngredient() {
+async function submitIngredient() {
   const name = document.getElementById('ing-name').value.trim();
   const qty = parseFloat(document.getElementById('ing-qty').value);
   const unit = document.getElementById('ing-unit').value.trim();
@@ -802,17 +770,22 @@ function submitIngredient() {
     return;
   }
 
+  const row = { name, purchase_qty: qty, purchase_unit: unit, purchase_price: price, stock, min_stock: minStock };
+
   if (editingIngredientId) {
+    const { error } = await sb.from('ingredients').update(row).eq('id', editingIngredientId);
+    if (error) { toast('저장 실패: ' + error.message); return; }
     const ing = ingredients.find(i => i.id === editingIngredientId);
     Object.assign(ing, { name, purchaseQty: qty, purchaseUnit: unit, purchasePrice: price, stock, minStock });
     toast('재료가 수정되었습니다.');
     cancelIngredientEdit();
   } else {
-    ingredients.push({ id: uid(), name, purchaseQty: qty, purchaseUnit: unit, purchasePrice: price, stock, minStock });
+    const { data, error } = await sb.from('ingredients').insert(row).select().single();
+    if (error) { toast('저장 실패: ' + error.message); return; }
+    ingredients.push(mapIngredient(data));
     toast('재료가 추가되었습니다.');
     clearIngredientForm();
   }
-  saveIngredients();
   renderIngredients();
 }
 
@@ -849,7 +822,7 @@ function cancelIngredientEdit() {
   document.getElementById('ing-cancel-btn').style.display = 'none';
 }
 
-function deleteIngredient(id) {
+async function deleteIngredient(id) {
   const usedIn = recipes.filter(r => r.items.some(it => it.ingredientId === id));
   if (usedIn.length > 0) {
     const names = usedIn.map(r => r.name).join(', ');
@@ -857,8 +830,9 @@ function deleteIngredient(id) {
   } else {
     if (!confirm('이 재료를 삭제하시겠습니까?')) return;
   }
+  const { error } = await sb.from('ingredients').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return; }
   ingredients = ingredients.filter(i => i.id !== id);
-  saveIngredients();
   renderIngredients();
 }
 
@@ -894,21 +868,34 @@ function renderIngredients() {
   `;
 }
 
-function applyUnitConversion(ing, newUnit, factor) {
+async function applyUnitConversion(ing, newUnit, factor) {
   const usedRecipes = recipes.filter(r => r.items.some(it => it.ingredientId === ing.id));
+
+  await sb.from('ingredients').update({
+    purchase_qty: ing.purchaseQty * factor,
+    stock: (ing.stock ?? 0) * factor,
+    min_stock: ing.minStock != null ? ing.minStock * factor : null,
+    purchase_unit: newUnit
+  }).eq('id', ing.id);
+
   ing.purchaseQty = ing.purchaseQty * factor;
   ing.stock = (ing.stock ?? 0) * factor;
   if (ing.minStock != null) ing.minStock = ing.minStock * factor;
   ing.purchaseUnit = newUnit;
-  usedRecipes.forEach(r => {
-    r.items.forEach(it => {
-      if (it.ingredientId === ing.id) it.amount = it.amount * factor;
-    });
-  });
+
+  for (const r of usedRecipes) {
+    for (const it of r.items) {
+      if (it.ingredientId === ing.id) {
+        const newAmount = it.amount * factor;
+        await sb.from('recipe_items').update({ amount: newAmount }).eq('recipe_id', r.id).eq('ingredient_id', ing.id);
+        it.amount = newAmount;
+      }
+    }
+  }
   return usedRecipes.length;
 }
 
-function convertIngredientUnit(id) {
+async function convertIngredientUnit(id) {
   const ing = ingredients.find(i => i.id === id);
   if (!ing) return;
 
@@ -926,16 +913,14 @@ function convertIngredientUnit(id) {
   );
   if (!ok) return;
 
-  applyUnitConversion(ing, newUnit.trim(), factor);
-  saveIngredients();
-  saveRecipes();
+  await applyUnitConversion(ing, newUnit.trim(), factor);
 
   toast(`단위가 변환되었습니다 (레시피 ${usedRecipeCount}개 함께 업데이트).`);
   renderIngredients();
   renderRecipeList();
 }
 
-function bulkConvertKgToG() {
+async function bulkConvertKgToG() {
   const targets = ingredients.filter(i => i.purchaseUnit.trim().toLowerCase() === 'kg');
   if (targets.length === 0) { toast('kg 단위로 등록된 재료가 없습니다.'); return; }
 
@@ -946,11 +931,9 @@ function bulkConvertKgToG() {
   if (!ok) return;
 
   let recipeUpdateCount = 0;
-  targets.forEach(ing => {
-    recipeUpdateCount += applyUnitConversion(ing, 'g', 1000);
-  });
-  saveIngredients();
-  saveRecipes();
+  for (const ing of targets) {
+    recipeUpdateCount += await applyUnitConversion(ing, 'g', 1000);
+  }
 
   toast(`재료 ${targets.length}개가 g로 변환되었습니다 (레시피 ${recipeUpdateCount}건 함께 업데이트).`);
   renderIngredients();
@@ -1031,7 +1014,7 @@ function renderRecipeItems() {
 }
 document.getElementById('recipe-yield').addEventListener('input', renderRecipeItems);
 
-function saveRecipe() {
+async function saveRecipe() {
   const name = document.getElementById('recipe-name').value.trim();
   const yieldQty = parseFloat(document.getElementById('recipe-yield').value);
   const packLabel = document.getElementById('recipe-pack-label').value.trim() || null;
@@ -1043,15 +1026,32 @@ function saveRecipe() {
   if (currentRecipeItems.length === 0) { toast('재료를 최소 1개 이상 담아주세요.'); return; }
   if (packLabel && !(packSize > 0)) { toast('묶음당 개수를 올바르게 입력해주세요.'); return; }
 
+  const row = { name, yield_qty: yieldQty, pack_label: packLabel, pack_size: packSize };
+  const items = currentRecipeItems.map(it => ({...it}));
+  let recipeId = editingRecipeId;
+
+  if (editingRecipeId) {
+    const { error } = await sb.from('recipes').update(row).eq('id', editingRecipeId);
+    if (error) { toast('저장 실패: ' + error.message); return; }
+    await sb.from('recipe_items').delete().eq('recipe_id', editingRecipeId);
+  } else {
+    const { data, error } = await sb.from('recipes').insert(row).select().single();
+    if (error) { toast('저장 실패: ' + error.message); return; }
+    recipeId = data.id;
+  }
+
+  if (items.length) {
+    await sb.from('recipe_items').insert(items.map(it => ({ recipe_id: recipeId, ingredient_id: it.ingredientId, amount: it.amount })));
+  }
+
   if (editingRecipeId) {
     const r = recipes.find(r => r.id === editingRecipeId);
-    Object.assign(r, { name, yieldQty, packLabel, packSize, items: currentRecipeItems.map(it => ({...it})) });
+    Object.assign(r, { name, yieldQty, packLabel, packSize, items });
     toast('레시피가 수정되었습니다.');
   } else {
-    recipes.push({ id: uid(), name, yieldQty, packLabel, packSize, items: currentRecipeItems.map(it => ({...it})) });
+    recipes.push({ id: recipeId, name, yieldQty, packLabel, packSize, items });
     toast('레시피가 저장되었습니다.');
   }
-  saveRecipes();
   cancelRecipeEdit();
   switchTab('recipe-list');
 }
@@ -1083,10 +1083,11 @@ function editRecipe(id) {
   renderRecipeItems();
 }
 
-function deleteRecipe(id) {
+async function deleteRecipe(id) {
   if (!confirm('이 레시피를 삭제하시겠습니까?')) return;
+  const { error } = await sb.from('recipes').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return; }
   recipes = recipes.filter(r => r.id !== id);
-  saveRecipes();
   renderRecipeList();
 }
 
@@ -1180,7 +1181,7 @@ function updateStockHint() {
     : '';
 }
 
-function submitStockChange() {
+async function submitStockChange() {
   const ingId = document.getElementById('stock-ing-select').value;
   const amount = parseFloat(document.getElementById('stock-amount').value);
   const note = document.getElementById('stock-note').value.trim();
@@ -1200,15 +1201,17 @@ function submitStockChange() {
     change = after - before;
     type = '재고 수정';
   }
-  ing.stock = after;
-  saveIngredients();
 
-  stockLogs.unshift({
-    id: uid(), ingredientId: ingId, ingredientName: ing.name, unit: ing.purchaseUnit,
-    date: new Date().toISOString().slice(0, 10), type, change, after, note
-  });
-  if (stockLogs.length > 200) stockLogs.length = 200;
-  saveStockLogs();
+  const { error } = await sb.from('ingredients').update({ stock: after }).eq('id', ingId);
+  if (error) { toast('처리 실패: ' + error.message); return; }
+  ing.stock = after;
+
+  const date = new Date().toISOString().slice(0, 10);
+  const { data: logData } = await sb.from('stock_logs').insert({
+    ingredient_id: ingId, ingredient_name: ing.name, unit: ing.purchaseUnit,
+    date, type, change, after, note
+  }).select().single();
+  if (logData) stockLogs.unshift(mapStockLog(logData));
 
   document.getElementById('stock-amount').value = '';
   document.getElementById('stock-note').value = '';
@@ -1388,42 +1391,49 @@ function onPoMatchChange(idx) {
   }
 }
 
-function applyBulkStockIn() {
+async function applyBulkStockIn() {
   let count = 0;
-  pendingOrderRows.forEach((row, idx) => {
+  for (let idx = 0; idx < pendingOrderRows.length; idx++) {
+    const row = pendingOrderRows[idx];
     const sel = document.getElementById(`po-match-${idx}`);
-    if (!sel) return;
+    if (!sel) continue;
     const mode = sel.value;
-    if (mode === 'skip') return;
+    if (mode === 'skip') continue;
 
     const stockQty = parseFloat(document.getElementById(`po-stockqty-${idx}`).value);
     const note = document.getElementById(`po-note-${idx}`).value.trim();
-    if (isNaN(stockQty) || stockQty <= 0) return;
+    if (isNaN(stockQty) || stockQty <= 0) continue;
 
     let ing;
     if (mode === 'new') {
       const unit = document.getElementById(`po-unit-${idx}`).value.trim() || '개';
       const purchQty = parseFloat(document.getElementById(`po-purchqty-${idx}`).value) || stockQty;
       const purchPrice = parseFloat(document.getElementById(`po-purchprice-${idx}`).value) || 0;
-      ing = { id: uid(), name: row.rawName, purchaseQty: purchQty, purchaseUnit: unit, purchasePrice: purchPrice, stock: 0, minStock: null };
+      const { data, error } = await sb.from('ingredients').insert({
+        name: row.rawName, purchase_qty: purchQty, purchase_unit: unit, purchase_price: purchPrice, stock: 0, min_stock: null
+      }).select().single();
+      if (error) continue;
+      ing = mapIngredient(data);
       ingredients.push(ing);
     } else {
       ing = ingredients.find(i => i.id === mode);
     }
-    if (!ing) return;
+    if (!ing) continue;
 
     const before = ing.stock ?? 0;
-    ing.stock = before + stockQty;
-    stockLogs.unshift({
-      id: uid(), ingredientId: ing.id, ingredientName: ing.name, unit: ing.purchaseUnit,
-      date: todayStr(), type: '발주 입고', change: stockQty, after: ing.stock, note
-    });
-    count++;
-  });
-  if (stockLogs.length > 300) stockLogs.length = 300;
+    const after = before + stockQty;
+    const { error: updErr } = await sb.from('ingredients').update({ stock: after }).eq('id', ing.id);
+    if (updErr) continue;
+    ing.stock = after;
 
-  saveIngredients();
-  saveStockLogs();
+    const { data: logData } = await sb.from('stock_logs').insert({
+      ingredient_id: ing.id, ingredient_name: ing.name, unit: ing.purchaseUnit,
+      date: todayStr(), type: '발주 입고', change: stockQty, after: ing.stock, note
+    }).select().single();
+    if (logData) stockLogs.unshift(mapStockLog(logData));
+    count++;
+  }
+
   toast(`${count}건 입고 처리되었습니다.`);
   cancelPendingOrder();
   renderIngredients();
@@ -1437,12 +1447,13 @@ function cancelPendingOrder() {
 }
 
 // ---------- Employees ----------
-function submitEmployee() {
+async function submitEmployee() {
   const name = document.getElementById('emp-name').value.trim();
   const wage = parseFloat(document.getElementById('emp-wage').value);
   if (!name || isNaN(wage) || wage < 0) { toast('직원 이름과 시급을 올바르게 입력해주세요.'); return; }
-  employees.push({ id: uid(), name, hourlyWage: wage });
-  saveEmployees();
+  const { data, error } = await sb.from('employees').insert({ name, hourly_wage: wage }).select().single();
+  if (error) { toast('저장 실패: ' + error.message); return; }
+  employees.push(mapEmployee(data));
   document.getElementById('emp-name').value = '';
   document.getElementById('emp-wage').value = '';
   renderEmployees();
@@ -1450,12 +1461,13 @@ function submitEmployee() {
   toast('직원이 추가되었습니다.');
 }
 
-function deleteEmployee(id) {
-  const usedIn = workLogs.some(w => w.employeeId === id);
+async function deleteEmployee(id) {
+  const usedIn = workLogs.some(w => (w.stages || []).some(s => s.employeeId === id));
   if (usedIn && !confirm('이 직원의 업무일지 기록이 있습니다. 그래도 삭제하시겠습니까?')) return;
   if (!usedIn && !confirm('이 직원을 삭제하시겠습니까?')) return;
+  const { error } = await sb.from('employees').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return; }
   employees = employees.filter(e => e.id !== id);
-  saveEmployees();
   renderEmployees();
   populateWorkLogSelects();
 }
@@ -1474,22 +1486,24 @@ function renderEmployees() {
 }
 
 // ---------- Cafes ----------
-function submitCafe() {
+async function submitCafe() {
   const name = document.getElementById('cafe-name').value.trim();
   if (!name) { toast('카페 이름을 입력해주세요.'); return; }
-  cafes.push({ id: uid(), name });
-  saveCafes();
+  const { data, error } = await sb.from('cafes').insert({ name }).select().single();
+  if (error) { toast('저장 실패: ' + error.message); return; }
+  cafes.push({ id: data.id, name: data.name });
   document.getElementById('cafe-name').value = '';
   renderCafes();
   toast('카페가 추가되었습니다.');
 }
 
-function deleteCafe(id) {
+async function deleteCafe(id) {
   const usedIn = shipments.some(s => s.cafeId === id);
   if (usedIn && !confirm('이 카페의 출고 기록이 있습니다. 그래도 삭제하시겠습니까?')) return;
   if (!usedIn && !confirm('이 카페를 삭제하시겠습니까?')) return;
+  const { error } = await sb.from('cafes').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return; }
   cafes = cafes.filter(c => c.id !== id);
-  saveCafes();
   renderCafes();
 }
 
@@ -1582,7 +1596,7 @@ function renderWorkLogStages() {
   el.innerHTML = rows + `<div class="mini-row"><span>총 소요시간</span><span>${totalMin}분</span></div>`;
 }
 
-function submitWorkLog() {
+async function submitWorkLog() {
   const date = document.getElementById('wl-date').value;
   const recipeId = document.getElementById('wl-recipe').value;
   const batches = parseFloat(document.getElementById('wl-batches').value);
@@ -1599,51 +1613,68 @@ function submitWorkLog() {
   const stages = currentWorkLogStages.map(s => ({...s}));
 
   if (editingWorkLogId) {
-    reverseWorkLogStock(workLogs.find(w => w.id === editingWorkLogId));
-    const w = workLogs.find(w => w.id === editingWorkLogId);
+    const prev = workLogs.find(w => w.id === editingWorkLogId);
+    await reverseWorkLogStock(prev);
+    const { error } = await sb.from('work_logs').update({
+      date, recipe_id: recipeId, batches, loss, note
+    }).eq('id', editingWorkLogId);
+    if (error) { toast('저장 실패: ' + error.message); return; }
+    await sb.from('work_log_stages').delete().eq('work_log_id', editingWorkLogId);
+    if (stages.length) {
+      await sb.from('work_log_stages').insert(stages.map(s => ({
+        work_log_id: editingWorkLogId, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes
+      })));
+    }
+    const w = prev;
     Object.assign(w, { date, recipeId, batches, loss, note, stages });
-    applyWorkLogStock(w);
+    await applyWorkLogStock(w);
     toast('업무일지가 수정되었습니다.');
   } else {
-    const w = { id: uid(), date, recipeId, batches, loss, note, stages };
+    const { data, error } = await sb.from('work_logs').insert({
+      date, recipe_id: recipeId, batches, loss, note
+    }).select().single();
+    if (error) { toast('저장 실패: ' + error.message); return; }
+    if (stages.length) {
+      await sb.from('work_log_stages').insert(stages.map(s => ({
+        work_log_id: data.id, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes
+      })));
+    }
+    const w = { id: data.id, date, recipeId, batches, loss, note, stages };
     workLogs.push(w);
-    applyWorkLogStock(w);
+    await applyWorkLogStock(w);
     toast('업무일지가 저장되고 재고가 차감되었습니다.');
   }
-  saveWorkLogs();
-  saveIngredients();
+  await refreshIngredientsAndLogs();
   cancelWorkLogEdit();
   renderWorkLogTable();
   renderIngredients();
 }
 
-function applyWorkLogStock(w) {
-  const recipe = recipes.find(r => r.id === w.recipeId);
-  if (!recipe) return;
-  recipe.items.forEach(it => {
-    const ing = ingredients.find(i => i.id === it.ingredientId);
-    if (!ing) return;
-    const needed = it.amount * w.batches;
-    ing.stock = (ing.stock ?? 0) - needed;
-    stockLogs.unshift({
-      id: uid(), ingredientId: ing.id, ingredientName: ing.name, unit: ing.purchaseUnit,
-      date: w.date, type: '생산 차감', change: -needed, after: ing.stock,
-      note: `${recipe.name} ${w.batches}배합 생산`
-    });
-  });
-  if (stockLogs.length > 300) stockLogs.length = 300;
-  saveStockLogs();
+async function refreshIngredientsAndLogs() {
+  const [ingRes, stockLogRes] = await Promise.all([
+    sb.from('ingredients').select('*'),
+    sb.from('stock_logs').select('*').order('date', { ascending: false }).limit(300)
+  ]);
+  ingredients = (ingRes.data || []).map(mapIngredient);
+  stockLogs = (stockLogRes.data || []).map(mapStockLog);
 }
 
-function reverseWorkLogStock(w) {
+async function applyWorkLogStock(w) {
+  const recipe = recipes.find(r => r.id === w.recipeId);
+  if (!recipe) return;
+  await sb.rpc('apply_recipe_stock_delta', {
+    p_recipe_id: w.recipeId, p_batches: w.batches, p_date: w.date,
+    p_note: `${recipe.name} ${w.batches}배합 생산`, p_sign: 1
+  });
+}
+
+async function reverseWorkLogStock(w) {
   if (!w) return;
   const recipe = recipes.find(r => r.id === w.recipeId);
   if (!recipe) return;
-  recipe.items.forEach(it => {
-    const ing = ingredients.find(i => i.id === it.ingredientId);
-    if (!ing) return;
-    const needed = it.amount * w.batches;
-    ing.stock = (ing.stock ?? 0) + needed;
+  await sb.rpc('apply_recipe_stock_delta', {
+    p_recipe_id: w.recipeId, p_batches: w.batches, p_date: w.date,
+    p_note: `${recipe.name} 업무일지 수정/삭제로 복구`, p_sign: -1
   });
 }
 
@@ -1676,13 +1707,14 @@ function editWorkLog(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function deleteWorkLog(id) {
+async function deleteWorkLog(id) {
   if (!confirm('이 업무일지를 삭제하시겠습니까? 차감되었던 재고는 복구됩니다.')) return;
   const w = workLogs.find(w => w.id === id);
-  reverseWorkLogStock(w);
-  saveIngredients();
+  await reverseWorkLogStock(w);
+  const { error } = await sb.from('work_logs').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return; }
+  await refreshIngredientsAndLogs();
   workLogs = workLogs.filter(w => w.id !== id);
-  saveWorkLogs();
   renderWorkLogTable();
   renderIngredients();
 }
@@ -1728,7 +1760,7 @@ function renderWorkLogTable() {
   `;
 }
 
-// 카페 출고 등록/조회는 cafe-pickup.html에서 처리합니다 (같은 localStorage의 shipments를 공유).
+// 카페 출고 등록/조회는 cafe-pickup.html에서 처리합니다 (같은 Supabase 프로젝트의 shipments 테이블을 공유).
 // 아래 대시보드는 그 데이터를 읽어서 집계만 합니다.
 
 // ---------- Dashboard (월간 통계) ----------
@@ -1813,11 +1845,100 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ---------- Data backup / legacy import ----------
+function exportData() {
+  const data = { ingredients, recipes, stockLogs, employees, cafes, workLogs, shipments };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `somni-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('백업 파일을 다운로드했습니다.');
+}
+
+async function importLegacyBackup(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const text = await file.text();
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (err) {
+    toast('파일을 읽을 수 없습니다.');
+    return;
+  }
+  const parseArr = v => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string') { try { return JSON.parse(v); } catch { return []; } }
+    return [];
+  };
+  const oldIngredients = parseArr(raw.ingredients || raw.somni_ingredients_v1);
+  const oldRecipes = parseArr(raw.recipes || raw.somni_recipes_v1);
+  const oldEmployees = parseArr(raw.employees || raw.somni_employees_v1);
+  const oldCafes = parseArr(raw.cafes || raw.somni_cafes_v1);
+  const oldWorkLogs = parseArr(raw.workLogs || raw.somni_worklogs_v1);
+  const oldShipments = parseArr(raw.shipments || raw.somni_shipments_v1);
+
+  if (!confirm(`이 파일에서 재료 ${oldIngredients.length}개, 레시피 ${oldRecipes.length}개, 직원 ${oldEmployees.length}명, 카페 ${oldCafes.length}개, 업무일지 ${oldWorkLogs.length}건, 출고 ${oldShipments.length}건을 서버에 새로 추가합니다. 계속할까요?`)) return;
+
+  toast('가져오는 중입니다...');
+  const ingMap = {}, cafeMap = {}, empMap = {}, recMap = {};
+
+  for (const ing of oldIngredients) {
+    const { data } = await sb.from('ingredients').insert({
+      name: ing.name, purchase_qty: ing.purchaseQty, purchase_unit: ing.purchaseUnit,
+      purchase_price: ing.purchasePrice, stock: ing.stock ?? 0, min_stock: ing.minStock ?? null
+    }).select().single();
+    if (data) ingMap[ing.id] = data.id;
+  }
+  for (const c of oldCafes) {
+    const { data } = await sb.from('cafes').insert({ name: c.name }).select().single();
+    if (data) cafeMap[c.id] = data.id;
+  }
+  for (const e of oldEmployees) {
+    const { data } = await sb.from('employees').insert({ name: e.name, hourly_wage: e.hourlyWage }).select().single();
+    if (data) empMap[e.id] = data.id;
+  }
+  for (const r of oldRecipes) {
+    const { data } = await sb.from('recipes').insert({
+      name: r.name, yield_qty: r.yieldQty, pack_label: r.packLabel ?? null, pack_size: r.packSize ?? null
+    }).select().single();
+    if (!data) continue;
+    recMap[r.id] = data.id;
+    const items = (r.items || [])
+      .filter(it => ingMap[it.ingredientId])
+      .map(it => ({ recipe_id: data.id, ingredient_id: ingMap[it.ingredientId], amount: it.amount }));
+    if (items.length) await sb.from('recipe_items').insert(items);
+  }
+  for (const w of oldWorkLogs) {
+    if (!recMap[w.recipeId]) continue;
+    const { data } = await sb.from('work_logs').insert({
+      date: w.date, recipe_id: recMap[w.recipeId], batches: w.batches, loss: w.loss ?? 0, note: w.note ?? null
+    }).select().single();
+    if (!data) continue;
+    const stages = (w.stages || [])
+      .filter(s => empMap[s.employeeId])
+      .map(s => ({ work_log_id: data.id, stage_name: s.stageName, employee_id: empMap[s.employeeId], time_minutes: s.timeMinutes }));
+    if (stages.length) await sb.from('work_log_stages').insert(stages);
+  }
+  for (const s of oldShipments) {
+    if (!cafeMap[s.cafeId] || !recMap[s.recipeId]) continue;
+    await sb.from('shipments').insert({
+      date: s.date, cafe_id: cafeMap[s.cafeId], recipe_id: recMap[s.recipeId], qty: s.qty,
+      entered_qty: s.enteredQty ?? null, entered_unit: s.enteredUnit ?? null,
+      unit_cost: s.unitCost, total_cost: s.totalCost
+    });
+  }
+
+  toast('가져오기가 끝났습니다. 새로고침합니다.');
+  input.value = '';
+  setTimeout(() => location.reload(), 1000);
+}
+
 // ---------- init ----------
 initLockScreen();
-renderIngredients();
-populateIngredientSelect();
-renderRecipeItems();
 </script>
 </body>
 </html>

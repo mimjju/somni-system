@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>카페 출고 등록</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     --bg: #fbf5ec;
@@ -154,27 +155,12 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const LS_ING = 'somni_ingredients_v1';
-const LS_RECIPE = 'somni_recipes_v1';
-const LS_CAFE = 'somni_cafes_v1';
-const LS_SHIPMENT = 'somni_shipments_v1';
+const SUPABASE_URL = 'https://gxhueytibwxgvrelsfku.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_DI4x1BPSCEATAFpvtph02A_6PQbgOJI';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function loadJSON(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (e) {
-    return fallback;
-  }
-}
-
-let ingredients = loadJSON(LS_ING, []);
-let recipes = loadJSON(LS_RECIPE, []);
-let cafes = loadJSON(LS_CAFE, []);
-let shipments = loadJSON(LS_SHIPMENT, []);
-
-function saveShipments() { localStorage.setItem(LS_SHIPMENT, JSON.stringify(shipments)); }
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+let recipes = []; // {id, name, yieldQty, packLabel, packSize}
+let cafes = [];   // {id, name}
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -186,20 +172,6 @@ function toast(msg) {
 function fmtQty(n) {
   const rounded = Math.round(n * 100) / 100;
   return rounded.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
-}
-
-function unitPrice(ing) {
-  if (!ing.purchaseQty || ing.purchaseQty <= 0) return 0;
-  return ing.purchasePrice / ing.purchaseQty;
-}
-
-function calcRecipePerUnitCost(r) {
-  let total = 0;
-  r.items.forEach(it => {
-    const ing = ingredients.find(i => i.id === it.ingredientId);
-    if (ing) total += it.amount * unitPrice(ing);
-  });
-  return total / r.yieldQty;
 }
 
 function todayStr() {
@@ -215,8 +187,19 @@ function escapeHtml(str) {
 let unitMode = 'piece'; // 'piece' | 'pack'
 let selectedCafeId = null;
 
-function initCafeSelect() {
+async function initCafeSelect() {
   const sel = document.getElementById('cafe-select');
+  sel.innerHTML = '<option value="">불러오는 중...</option>';
+
+  const [{ data: cafeData, error: cafeErr }, { data: recipeData, error: recErr }] = await Promise.all([
+    sb.rpc('list_cafes_public'),
+    sb.rpc('list_products')
+  ]);
+
+  if (cafeErr) { sel.innerHTML = '<option value="">불러오기 실패</option>'; toast('카페 목록을 불러오지 못했습니다.'); return; }
+  cafes = cafeData || [];
+  recipes = (recipeData || []).map(r => ({ id: r.id, name: r.name, yieldQty: r.yield_qty, packLabel: r.pack_label, packSize: r.pack_size }));
+
   if (cafes.length === 0) {
     sel.innerHTML = '<option value="">등록된 카페가 없습니다 (관리자에게 문의)</option>';
     return;
@@ -274,7 +257,7 @@ function updateQtyLabel() {
   label.textContent = (unitMode === 'pack' && recipe && recipe.packLabel) ? `수량 (${recipe.packLabel})` : '수량 (개)';
 }
 
-function submitShipment() {
+async function submitShipment() {
   const date = document.getElementById('ship-date').value;
   const recipeId = document.getElementById('ship-recipe').value;
   const inputQty = parseFloat(document.getElementById('ship-qty').value);
@@ -288,33 +271,35 @@ function submitShipment() {
 
   const isPack = unitMode === 'pack' && recipe.packSize;
   const qty = isPack ? inputQty * recipe.packSize : inputQty;
-  const unitCost = calcRecipePerUnitCost(recipe);
 
-  shipments.push({
-    id: uid(), date, cafeId: selectedCafeId, recipeId, qty,
-    enteredQty: inputQty, enteredUnit: isPack ? recipe.packLabel : null,
-    unitCost, totalCost: unitCost * qty
+  const { error } = await sb.rpc('create_shipment', {
+    p_cafe_id: selectedCafeId,
+    p_recipe_id: recipeId,
+    p_qty: qty,
+    p_entered_qty: inputQty,
+    p_entered_unit: isPack ? recipe.packLabel : null,
+    p_date: date
   });
-  saveShipments();
+  if (error) { toast('등록 실패: ' + error.message); return; }
 
   document.getElementById('ship-qty').value = '';
   toast(`${cafe.name} 출고가 등록되었습니다.`);
   renderHistory();
 }
 
-function renderHistory() {
+async function renderHistory() {
   const el = document.getElementById('history-table');
-  const filtered = shipments
-    .filter(s => s.cafeId === selectedCafeId)
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 30);
+  el.innerHTML = '<div class="empty">불러오는 중...</div>';
 
-  if (filtered.length === 0) { el.innerHTML = '<div class="empty">출고 기록이 없습니다.</div>'; return; }
+  const { data, error } = await sb.rpc('list_shipment_history', { p_cafe_id: selectedCafeId });
+  if (error || !data || data.length === 0) {
+    el.innerHTML = '<div class="empty">출고 기록이 없습니다.</div>';
+    return;
+  }
 
-  const rows = filtered.map(s => {
-    const recipe = recipes.find(r => r.id === s.recipeId);
-    const qtyText = s.enteredUnit ? `${fmtQty(s.enteredQty)}${escapeHtml(s.enteredUnit)}` : `${fmtQty(s.qty)}개`;
-    return `<tr><td>${s.date}</td><td>${recipe ? escapeHtml(recipe.name) : '(삭제된 제품)'}</td><td class="num">${qtyText}</td></tr>`;
+  const rows = data.map(s => {
+    const qtyText = s.entered_unit ? `${fmtQty(s.entered_qty)}${escapeHtml(s.entered_unit)}` : `${fmtQty(s.qty)}개`;
+    return `<tr><td>${s.date}</td><td>${escapeHtml(s.product_name || '(삭제된 제품)')}</td><td class="num">${qtyText}</td></tr>`;
   }).join('');
   el.innerHTML = `<table><thead><tr><th>날짜</th><th>제품</th><th class="num">수량</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
