@@ -76,7 +76,12 @@
   }
   button.primary:hover { background: var(--accent-dark); }
   button.primary:active { transform: translateY(1px); }
+  button.secondary {
+    background: #fff; border: 1.5px solid var(--border); padding: 11px 16px;
+    border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; color: var(--sub); font-weight: 600;
+  }
   button.link { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 13px; padding: 4px 7px; font-weight: 600; border-radius: 6px; }
+  button.link.edit { color: var(--accent-dark); }
 
   .segmented { display: flex; gap: 6px; margin-bottom: 14px; background: var(--good-bg); padding: 4px; border-radius: var(--radius-sm); }
   .segmented button {
@@ -117,7 +122,7 @@
   </div>
 
   <div class="card" id="form-card" style="display:none">
-    <h2>출고 등록</h2>
+    <h2 id="form-title">출고 등록</h2>
     <div class="field-row">
       <div class="field">
         <label>날짜</label>
@@ -143,7 +148,8 @@
         <input id="ship-qty" type="number" min="0" step="any" placeholder="예: 10" inputmode="decimal">
       </div>
     </div>
-    <button class="primary" onclick="submitShipment()">가져가기 등록</button>
+    <button class="primary" id="submit-btn" onclick="submitShipment()">가져가기 등록</button>
+    <button class="secondary" id="cancel-edit-btn" style="display:none; width:100%; margin-top:8px" onclick="cancelEditShipment()">수정 취소</button>
   </div>
 
   <div class="card" id="history-card" style="display:none">
@@ -186,6 +192,8 @@ function escapeHtml(str) {
 
 let unitMode = 'piece'; // 'piece' | 'pack'
 let selectedCafeId = null;
+let editingShipmentId = null;
+let lastHistoryData = [];
 
 async function initCafeSelect() {
   const sel = document.getElementById('cafe-select');
@@ -210,6 +218,7 @@ async function initCafeSelect() {
 
 function onCafeChange() {
   selectedCafeId = document.getElementById('cafe-select').value || null;
+  cancelEditShipment();
   document.getElementById('form-card').style.display = selectedCafeId ? 'block' : 'none';
   document.getElementById('history-card').style.display = selectedCafeId ? 'block' : 'none';
   if (!selectedCafeId) return;
@@ -271,19 +280,73 @@ async function submitShipment() {
 
   const isPack = unitMode === 'pack' && recipe.packSize;
   const qty = isPack ? inputQty * recipe.packSize : inputQty;
+  const enteredUnit = isPack ? recipe.packLabel : null;
 
-  const { error } = await sb.rpc('create_shipment', {
-    p_cafe_id: selectedCafeId,
-    p_recipe_id: recipeId,
-    p_qty: qty,
-    p_entered_qty: inputQty,
-    p_entered_unit: isPack ? recipe.packLabel : null,
-    p_date: date
-  });
-  if (error) { toast('등록 실패: ' + error.message); return; }
+  if (editingShipmentId) {
+    const { error } = await sb.rpc('update_shipment', {
+      p_shipment_id: editingShipmentId,
+      p_cafe_id: selectedCafeId,
+      p_recipe_id: recipeId,
+      p_qty: qty,
+      p_entered_qty: inputQty,
+      p_entered_unit: enteredUnit,
+      p_date: date
+    });
+    if (error) { toast('수정 실패: ' + error.message); return; }
+    toast('출고 내역이 수정되었습니다.');
+    cancelEditShipment();
+  } else {
+    const { error } = await sb.rpc('create_shipment', {
+      p_cafe_id: selectedCafeId,
+      p_recipe_id: recipeId,
+      p_qty: qty,
+      p_entered_qty: inputQty,
+      p_entered_unit: enteredUnit,
+      p_date: date
+    });
+    if (error) { toast('등록 실패: ' + error.message); return; }
+    document.getElementById('ship-qty').value = '';
+    toast(`${cafe.name} 출고가 등록되었습니다.`);
+  }
+  renderHistory();
+}
 
+function editShipment(id) {
+  const s = lastHistoryData.find(r => r.id === id);
+  if (!s) return;
+  editingShipmentId = id;
+  document.getElementById('form-title').textContent = '출고 수정';
+  document.getElementById('submit-btn').textContent = '수정 완료';
+  document.getElementById('cancel-edit-btn').style.display = 'block';
+
+  document.getElementById('ship-date').value = s.date;
+  document.getElementById('ship-recipe').value = s.recipe_id || '';
+  onRecipeChange();
+
+  if (s.entered_unit) {
+    setUnitMode('pack');
+    document.getElementById('ship-qty').value = s.entered_qty;
+  } else {
+    setUnitMode('piece');
+    document.getElementById('ship-qty').value = s.qty;
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEditShipment() {
+  editingShipmentId = null;
+  document.getElementById('form-title').textContent = '출고 등록';
+  document.getElementById('submit-btn').textContent = '가져가기 등록';
+  document.getElementById('cancel-edit-btn').style.display = 'none';
   document.getElementById('ship-qty').value = '';
-  toast(`${cafe.name} 출고가 등록되었습니다.`);
+}
+
+async function deleteShipmentRow(id) {
+  if (!confirm('이 출고 기록을 삭제하시겠습니까?')) return;
+  const { error } = await sb.rpc('delete_shipment', { p_shipment_id: id, p_cafe_id: selectedCafeId });
+  if (error) { toast('삭제 실패: ' + error.message); return; }
+  if (editingShipmentId === id) cancelEditShipment();
+  toast('삭제되었습니다.');
   renderHistory();
 }
 
@@ -293,15 +356,25 @@ async function renderHistory() {
 
   const { data, error } = await sb.rpc('list_shipment_history', { p_cafe_id: selectedCafeId });
   if (error || !data || data.length === 0) {
+    lastHistoryData = [];
     el.innerHTML = '<div class="empty">출고 기록이 없습니다.</div>';
     return;
   }
+  lastHistoryData = data;
 
   const rows = data.map(s => {
     const qtyText = s.entered_unit ? `${fmtQty(s.entered_qty)}${escapeHtml(s.entered_unit)}` : `${fmtQty(s.qty)}개`;
-    return `<tr><td>${s.date}</td><td>${escapeHtml(s.product_name || '(삭제된 제품)')}</td><td class="num">${qtyText}</td></tr>`;
+    return `<tr>
+      <td>${s.date}</td>
+      <td>${escapeHtml(s.product_name || '(삭제된 제품)')}</td>
+      <td class="num">${qtyText}</td>
+      <td class="num">
+        <button class="link edit" onclick="editShipment('${s.id}')">수정</button>
+        <button class="link" onclick="deleteShipmentRow('${s.id}')">삭제</button>
+      </td>
+    </tr>`;
   }).join('');
-  el.innerHTML = `<table><thead><tr><th>날짜</th><th>제품</th><th class="num">수량</th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table><thead><tr><th>날짜</th><th>제품</th><th class="num">수량</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 initCafeSelect();
