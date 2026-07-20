@@ -1745,6 +1745,7 @@ function renderWorkLogTable() {
         <td class="num">${producedQty}개</td>
         <td class="num">${w.loss}개</td>
         <td>${workLogStageSummary(w)} <span class="badge">${workLogTotalMinutes(w)}분</span></td>
+        <td>${w.note ? escapeHtml(w.note) : '<span class="empty" style="padding:0">-</span>'}</td>
         <td class="num">
           <button class="link" onclick="editWorkLog('${w.id}')">수정</button>
           <button class="link danger" onclick="deleteWorkLog('${w.id}')">삭제</button>
@@ -1754,7 +1755,7 @@ function renderWorkLogTable() {
   }).join('');
   el.innerHTML = `
     <table>
-      <thead><tr><th>날짜</th><th>제품</th><th class="num">배합수</th><th class="num">생산량</th><th class="num">로스</th><th>공정/담당/시간</th><th class="num"></th></tr></thead>
+      <thead><tr><th>날짜</th><th>제품</th><th class="num">배합수</th><th class="num">생산량</th><th class="num">로스</th><th>공정/담당/시간</th><th>메모</th><th class="num"></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
