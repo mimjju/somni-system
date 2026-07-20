@@ -177,6 +177,7 @@
       <button class="primary" style="width:100%" onclick="submitLockScreen()">확인</button>
       <div id="lock-error" class="warn" style="margin-top:10px; min-height:14px"></div>
       <a href="cafe-pickup.html" style="display:block; margin-top:16px; font-size:13px; color:var(--sub); text-decoration:none">📦 카페에서 오셨나요? 출고 등록하러 가기 →</a>
+      <a href="javascript:void(0)" onclick="resetPinsOnly()" style="display:block; margin-top:8px; font-size:12px; color:var(--sub); text-decoration:none">비밀번호를 잊으셨나요? (비밀번호만 초기화, 재료·레시피·재고 데이터는 그대로 유지됩니다)</a>
     </div>
   </div>
 
@@ -579,6 +580,15 @@ function initLockScreen() {
   confirmInput.value = '';
   document.getElementById('lock-error').textContent = '';
   document.getElementById('lock-password').focus();
+}
+
+function resetPinsOnly() {
+  const ok = confirm('관리자 비밀번호와 직원 비밀번호를 초기화합니다. 재료·레시피·재고·업무일지 등 나머지 데이터는 전혀 건드리지 않습니다. 계속할까요?');
+  if (!ok) return;
+  localStorage.removeItem(LS_ADMIN_PIN);
+  localStorage.removeItem(LS_STAFF_PIN);
+  toast('비밀번호가 초기화되었습니다. 관리자 비밀번호를 새로 설정해주세요.');
+  initLockScreen();
 }
 
 function submitLockScreen() {
