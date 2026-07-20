@@ -489,7 +489,7 @@
 
     <div class="card">
       <h2>직원 비밀번호 관리</h2>
-      <div class="hint">재료관리·레시피등록·원가보기·재고관리·발주입고·업무일지에 들어올 때 직원이 쓰는 비밀번호입니다. 잠금화면에서 이 비밀번호를 입력하면 열립니다 (대시보드는 제외).</div>
+      <div class="hint">재고관리·재고 현황·발주입고·업무일지에 들어올 때 직원이 쓰는 비밀번호입니다. 레시피등록·제품원가·월간대시보드·직원 시급은 관리자 비밀번호로만 열립니다.</div>
       <div class="field-row" style="align-items:flex-end">
         <div class="field">
           <label>새 직원 비밀번호</label>
@@ -609,6 +609,8 @@ function submitLockScreen() {
     return;
   }
   errEl.textContent = '비밀번호가 일치하지 않습니다.';
+  document.getElementById('lock-password').value = '';
+  document.getElementById('lock-password').focus();
 }
 document.getElementById('lock-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitLockScreen(); });
 document.getElementById('lock-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') submitLockScreen(); });
