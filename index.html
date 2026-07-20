@@ -489,6 +489,16 @@
     </div>
 
     <div class="card">
+      <h2>데이터 백업 / 이동</h2>
+      <div class="hint">재료·레시피·재고·업무일지·카페·출고 데이터를 파일로 저장하거나 불러옵니다. 비밀번호는 포함되지 않아요 (기기마다 따로 설정). 로컬 파일에서 도메인으로 데이터를 옮길 때도 이걸 쓰세요: 옮길 곳에서 내보내기 → 옮겨갈 곳에서 불러오기.</div>
+      <div class="field-row">
+        <button class="primary" onclick="exportData()">📥 백업 파일 다운로드</button>
+        <button class="secondary" onclick="document.getElementById('import-file-input').click()">📤 백업 파일 불러오기</button>
+        <input type="file" id="import-file-input" accept="application/json" style="display:none" onchange="importDataFile(this)">
+      </div>
+    </div>
+
+    <div class="card">
       <h2>직원 비밀번호 관리</h2>
       <div class="hint">재고관리·재고 현황·발주입고·업무일지에 들어올 때 직원이 쓰는 비밀번호입니다. 레시피등록·제품원가·월간대시보드·직원 시급은 관리자 비밀번호로만 열립니다.</div>
       <div class="field-row" style="align-items:flex-end">
@@ -645,6 +655,48 @@ function setStaffPin() {
   localStorage.setItem(LS_STAFF_PIN, pin);
   document.getElementById('staff-pin-input').value = '';
   toast('직원 비밀번호가 저장되었습니다.');
+}
+
+// ---------- Data backup / restore ----------
+function exportData() {
+  const data = {};
+  [LS_ING, LS_RECIPE, LS_STOCK_LOG, LS_EMPLOYEE, LS_CAFE, LS_WORKLOG, LS_SHIPMENT].forEach(key => {
+    const val = localStorage.getItem(key);
+    if (val !== null) data[key] = val;
+  });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `somni-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('백업 파일을 다운로드했습니다.');
+}
+
+function importDataFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    let data;
+    try {
+      data = JSON.parse(e.target.result);
+    } catch (err) {
+      toast('파일을 읽을 수 없습니다. 올바른 백업 파일인지 확인해주세요.');
+      return;
+    }
+    const ok = confirm('백업 파일을 불러오면 현재 이 기기에 있는 재료·레시피·재고·업무일지·카페·출고 데이터를 덮어씁니다. 계속할까요?');
+    if (!ok) return;
+    const allowedKeys = [LS_ING, LS_RECIPE, LS_STOCK_LOG, LS_EMPLOYEE, LS_CAFE, LS_WORKLOG, LS_SHIPMENT];
+    Object.entries(data).forEach(([key, val]) => {
+      if (allowedKeys.includes(key)) localStorage.setItem(key, val);
+    });
+    toast('데이터를 불러왔습니다. 새로고침합니다.');
+    setTimeout(() => location.reload(), 800);
+  };
+  reader.readAsText(file);
+  input.value = '';
 }
 
 function applyAdminVisibility() {
