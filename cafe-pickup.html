@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>카페 출고 등록</title>
+<style>
+  :root {
+    --bg: #fbf5ec;
+    --card: #fffdfa;
+    --border: #ecdfc9;
+    --text: #3a2c22;
+    --sub: #96806c;
+    --accent: #d9813f;
+    --accent-dark: #b5652c;
+    --accent-light: #fbe6ce;
+    --danger: #c2503f;
+    --good-bg: #f3ecdd;
+    --shadow-sm: 0 1px 2px rgba(58,41,20,0.05), 0 1px 1px rgba(58,41,20,0.03);
+    --shadow-md: 0 10px 28px rgba(58,41,20,0.09), 0 2px 6px rgba(58,41,20,0.05);
+    --radius-lg: 18px;
+    --radius-sm: 9px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Pretendard", "Malgun Gothic", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(900px 360px at 15% -10%, #fff3e2 0%, rgba(255,243,226,0) 60%),
+      var(--bg);
+    color: var(--text);
+    padding: 28px 16px 70px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
+  .subtitle { color: var(--sub); font-size: 12.5px; margin: 6px 0 22px; line-height: 1.5; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; letter-spacing: -0.01em; }
+
+  .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .field { flex: 1; min-width: 120px; display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; color: var(--sub); font-weight: 500; }
+  input, select {
+    padding: 11px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    background: #fff;
+    color: var(--text);
+    width: 100%;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+
+  button { font-family: inherit; }
+  button.primary {
+    background: var(--accent); color: #fff; border: none;
+    padding: 13px 18px; border-radius: var(--radius-sm); font-size: 15.5px; cursor: pointer; font-weight: 700;
+    width: 100%;
+    box-shadow: 0 2px 8px rgba(217,129,63,0.35);
+    transition: background .15s ease, transform .1s ease;
+  }
+  button.primary:hover { background: var(--accent-dark); }
+  button.primary:active { transform: translateY(1px); }
+  button.link { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 13px; padding: 4px 7px; font-weight: 600; border-radius: 6px; }
+
+  .segmented { display: flex; gap: 6px; margin-bottom: 14px; background: var(--good-bg); padding: 4px; border-radius: var(--radius-sm); }
+  .segmented button {
+    flex: 1; padding: 9px; border: none; background: none;
+    border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--sub); font-weight: 600;
+    transition: background .15s ease, color .15s ease;
+  }
+  .segmented button.active { background: var(--accent); color: #fff; box-shadow: var(--shadow-sm); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--sub); font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+  td.num, th.num { text-align: right; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--good-bg); }
+
+  .empty { color: var(--sub); font-size: 13px; padding: 16px 4px; text-align: center; }
+  .hint { font-size: 12px; color: var(--sub); margin: -4px 0 12px; line-height: 1.5; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(6px);
+    background: var(--text); color: #fff; padding: 11px 20px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+    box-shadow: var(--shadow-md);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📦 카페 출고 등록</h1>
+  <div class="subtitle">가져가시는 만큼만 기록해주세요. 재고·레시피·원가 정보는 이 페이지에 없습니다.</div>
+
+  <div class="card">
+    <h2>어느 카페세요?</h2>
+    <select id="cafe-select" onchange="onCafeChange()"></select>
+  </div>
+
+  <div class="card" id="form-card" style="display:none">
+    <h2>출고 등록</h2>
+    <div class="field-row">
+      <div class="field">
+        <label>날짜</label>
+        <input id="ship-date" type="date">
+      </div>
+      <div class="field">
+        <label>제품</label>
+        <select id="ship-recipe" onchange="onRecipeChange()"></select>
+      </div>
+    </div>
+    <div class="field-row" id="unit-toggle-row" style="display:none">
+      <div class="field">
+        <label>입력 단위</label>
+        <div class="segmented" style="margin-bottom:0">
+          <button type="button" id="unit-piece" class="active" onclick="setUnitMode('piece')">개별</button>
+          <button type="button" id="unit-pack" onclick="setUnitMode('pack')">묶음</button>
+        </div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label id="qty-label">수량 (개)</label>
+        <input id="ship-qty" type="number" min="0" step="any" placeholder="예: 10" inputmode="decimal">
+      </div>
+    </div>
+    <button class="primary" onclick="submitShipment()">가져가기 등록</button>
+  </div>
+
+  <div class="card" id="history-card" style="display:none">
+    <h2>최근 출고 내역</h2>
+    <div id="history-table"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LS_ING = 'somni_ingredients_v1';
+const LS_RECIPE = 'somni_recipes_v1';
+const LS_CAFE = 'somni_cafes_v1';
+const LS_SHIPMENT = 'somni_shipments_v1';
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+let ingredients = loadJSON(LS_ING, []);
+let recipes = loadJSON(LS_RECIPE, []);
+let cafes = loadJSON(LS_CAFE, []);
+let shipments = loadJSON(LS_SHIPMENT, []);
+
+function saveShipments() { localStorage.setItem(LS_SHIPMENT, JSON.stringify(shipments)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+function fmtQty(n) {
+  const rounded = Math.round(n * 100) / 100;
+  return rounded.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+}
+
+function unitPrice(ing) {
+  if (!ing.purchaseQty || ing.purchaseQty <= 0) return 0;
+  return ing.purchasePrice / ing.purchaseQty;
+}
+
+function calcRecipePerUnitCost(r) {
+  let total = 0;
+  r.items.forEach(it => {
+    const ing = ingredients.find(i => i.id === it.ingredientId);
+    if (ing) total += it.amount * unitPrice(ing);
+  });
+  return total / r.yieldQty;
+}
+
+function todayStr() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let unitMode = 'piece'; // 'piece' | 'pack'
+let selectedCafeId = null;
+
+function initCafeSelect() {
+  const sel = document.getElementById('cafe-select');
+  if (cafes.length === 0) {
+    sel.innerHTML = '<option value="">등록된 카페가 없습니다 (관리자에게 문의)</option>';
+    return;
+  }
+  sel.innerHTML = '<option value="">카페를 선택하세요</option>' +
+    cafes.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+}
+
+function onCafeChange() {
+  selectedCafeId = document.getElementById('cafe-select').value || null;
+  document.getElementById('form-card').style.display = selectedCafeId ? 'block' : 'none';
+  document.getElementById('history-card').style.display = selectedCafeId ? 'block' : 'none';
+  if (!selectedCafeId) return;
+
+  if (!document.getElementById('ship-date').value) {
+    document.getElementById('ship-date').value = todayStr();
+  }
+  populateRecipeSelect();
+  renderHistory();
+}
+
+function populateRecipeSelect() {
+  const sel = document.getElementById('ship-recipe');
+  sel.innerHTML = recipes.length
+    ? recipes.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('')
+    : '<option value="">등록된 제품이 없습니다</option>';
+  onRecipeChange();
+}
+
+function onRecipeChange() {
+  const recipe = recipes.find(r => r.id === document.getElementById('ship-recipe').value);
+  const row = document.getElementById('unit-toggle-row');
+  unitMode = 'piece';
+  document.getElementById('unit-piece').classList.add('active');
+  document.getElementById('unit-pack').classList.remove('active');
+  if (recipe && recipe.packLabel && recipe.packSize) {
+    row.style.display = 'flex';
+    document.getElementById('unit-pack').textContent = `묶음 (${recipe.packLabel}, ${recipe.packSize}개)`;
+  } else {
+    row.style.display = 'none';
+  }
+  updateQtyLabel();
+}
+
+function setUnitMode(mode) {
+  unitMode = mode;
+  document.getElementById('unit-piece').classList.toggle('active', mode === 'piece');
+  document.getElementById('unit-pack').classList.toggle('active', mode === 'pack');
+  updateQtyLabel();
+}
+
+function updateQtyLabel() {
+  const recipe = recipes.find(r => r.id === document.getElementById('ship-recipe').value);
+  const label = document.getElementById('qty-label');
+  label.textContent = (unitMode === 'pack' && recipe && recipe.packLabel) ? `수량 (${recipe.packLabel})` : '수량 (개)';
+}
+
+function submitShipment() {
+  const date = document.getElementById('ship-date').value;
+  const recipeId = document.getElementById('ship-recipe').value;
+  const inputQty = parseFloat(document.getElementById('ship-qty').value);
+  const cafe = cafes.find(c => c.id === selectedCafeId);
+  const recipe = recipes.find(r => r.id === recipeId);
+
+  if (!date) { toast('날짜를 입력해주세요.'); return; }
+  if (!cafe) { toast('카페를 다시 선택해주세요.'); return; }
+  if (!recipe) { toast('제품을 선택해주세요.'); return; }
+  if (!(inputQty > 0)) { toast('수량을 올바르게 입력해주세요.'); return; }
+
+  const isPack = unitMode === 'pack' && recipe.packSize;
+  const qty = isPack ? inputQty * recipe.packSize : inputQty;
+  const unitCost = calcRecipePerUnitCost(recipe);
+
+  shipments.push({
+    id: uid(), date, cafeId: selectedCafeId, recipeId, qty,
+    enteredQty: inputQty, enteredUnit: isPack ? recipe.packLabel : null,
+    unitCost, totalCost: unitCost * qty
+  });
+  saveShipments();
+
+  document.getElementById('ship-qty').value = '';
+  toast(`${cafe.name} 출고가 등록되었습니다.`);
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-table');
+  const filtered = shipments
+    .filter(s => s.cafeId === selectedCafeId)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 30);
+
+  if (filtered.length === 0) { el.innerHTML = '<div class="empty">출고 기록이 없습니다.</div>'; return; }
+
+  const rows = filtered.map(s => {
+    const recipe = recipes.find(r => r.id === s.recipeId);
+    const qtyText = s.enteredUnit ? `${fmtQty(s.enteredQty)}${escapeHtml(s.enteredUnit)}` : `${fmtQty(s.qty)}개`;
+    return `<tr><td>${s.date}</td><td>${recipe ? escapeHtml(recipe.name) : '(삭제된 제품)'}</td><td class="num">${qtyText}</td></tr>`;
+  }).join('');
+  el.innerHTML = `<table><thead><tr><th>날짜</th><th>제품</th><th class="num">수량</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+initCafeSelect();
+</script>
+</body>
+</html>

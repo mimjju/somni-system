@@ -1,0 +1,1755 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>솜리 베이킹실 통합 관리 시스템</title>
+<style>
+  :root {
+    --bg: #fbf5ec;
+    --card: #fffdfa;
+    --border: #ecdfc9;
+    --text: #3a2c22;
+    --sub: #96806c;
+    --accent: #d9813f;
+    --accent-dark: #b5652c;
+    --accent-light: #fbe6ce;
+    --danger: #c2503f;
+    --danger-bg: #fbe9e5;
+    --good-bg: #f3ecdd;
+    --shadow-sm: 0 1px 2px rgba(58,41,20,0.05), 0 1px 1px rgba(58,41,20,0.03);
+    --shadow-md: 0 10px 28px rgba(58,41,20,0.09), 0 2px 6px rgba(58,41,20,0.05);
+    --radius-lg: 18px;
+    --radius-md: 12px;
+    --radius-sm: 9px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Pretendard", "Malgun Gothic", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(1100px 420px at 12% -8%, #fff3e2 0%, rgba(255,243,226,0) 60%),
+      var(--bg);
+    color: var(--text);
+    padding: 28px 18px 70px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 0; letter-spacing: -0.02em; font-weight: 800; }
+  .subtitle { color: var(--sub); font-size: 12.5px; margin: 6px 0 22px; letter-spacing: 0.01em; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 22px;
+    padding: 5px;
+    background: var(--good-bg);
+    border-radius: var(--radius-md);
+    flex-wrap: wrap;
+  }
+  .tab-btn {
+    padding: 9px 14px;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    font-size: 13.5px;
+    color: var(--sub);
+    cursor: pointer;
+    white-space: nowrap;
+    font-weight: 500;
+    transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+  }
+  .tab-btn:hover { color: var(--accent-dark); }
+  .tab-btn.active {
+    color: var(--accent-dark);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+    font-weight: 700;
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card h2 { font-size: 15px; margin: 0 0 14px; font-weight: 700; letter-spacing: -0.01em; }
+  .card .hint { font-size: 12px; color: var(--sub); margin: -8px 0 14px; line-height: 1.5; }
+
+  .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .field { flex: 1; min-width: 110px; display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; color: var(--sub); font-weight: 500; }
+  input, select, textarea {
+    padding: 9px 11px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    background: #fff;
+    color: var(--text);
+    width: 100%;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+
+  button { font-family: inherit; }
+  button.primary {
+    background: var(--accent); color: #fff; border: none;
+    padding: 10px 20px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; font-weight: 700;
+    box-shadow: 0 2px 8px rgba(217,129,63,0.35);
+    transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
+  }
+  button.primary:hover { background: var(--accent-dark); box-shadow: 0 4px 12px rgba(217,129,63,0.4); }
+  button.primary:active { transform: translateY(1px); }
+  button.secondary {
+    background: #fff; border: 1.5px solid var(--border); padding: 8px 16px;
+    border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; color: var(--sub); font-weight: 600;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  button.secondary:hover { border-color: var(--accent); color: var(--accent-dark); }
+  button.link { background: none; border: none; color: var(--accent-dark); cursor: pointer; font-size: 13px; padding: 4px 7px; font-weight: 600; border-radius: 6px; transition: background .15s ease; }
+  button.link:hover { background: var(--accent-light); }
+  button.link.danger { color: var(--danger); }
+  button.link.danger:hover { background: var(--danger-bg); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--sub); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  td.num, th.num { text-align: right; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background .12s ease; }
+  tbody tr:hover { background: var(--good-bg); }
+
+  .empty { color: var(--sub); font-size: 13px; padding: 16px 4px; text-align: center; }
+
+  .mini-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 4px; border-bottom: 1px dashed var(--border); font-size: 13.5px; }
+  .mini-row:last-child { border-bottom: none; }
+
+  .totals { display: flex; gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .totals .box { flex: 1; background: var(--good-bg); border-radius: var(--radius-md); padding: 12px 14px; }
+  .totals .label { font-size: 11.5px; color: var(--sub); font-weight: 600; }
+  .totals .value { font-size: 20px; font-weight: 800; color: var(--accent-dark); letter-spacing: -0.01em; }
+
+  .recipe-card .value.big { font-size: 23px; }
+  .recipe-detail { margin-top: 10px; display: none; }
+  .recipe-detail.open { display: block; }
+
+  .badge { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 999px; background: var(--good-bg); color: var(--sub); margin-left: 6px; font-weight: 600; }
+  .badge.low { background: var(--danger-bg); color: var(--danger); font-weight: 700; }
+  .warn { color: var(--danger); font-size: 12px; font-weight: 600; }
+
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(6px);
+    background: var(--text); color: #fff; padding: 11px 20px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+    box-shadow: var(--shadow-md);
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .segmented { display: flex; gap: 6px; margin-bottom: 14px; background: var(--good-bg); padding: 4px; border-radius: var(--radius-sm); }
+  .segmented button {
+    flex: 1; padding: 8px; border: none; background: none;
+    border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--sub); font-weight: 600;
+    transition: background .15s ease, color .15s ease;
+  }
+  .segmented button.active { background: var(--accent); color: #fff; box-shadow: var(--shadow-sm); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="lock-screen">
+    <div class="card" style="max-width:340px; margin:100px auto 0; text-align:center">
+      <div style="font-size:36px; margin-bottom:4px">🍞</div>
+      <h2 style="margin-bottom:14px">솜리 베이킹실</h2>
+      <div class="hint" id="lock-hint" style="margin:-6px 0 14px">비밀번호를 입력하세요</div>
+      <input id="lock-password" type="password" placeholder="비밀번호" style="text-align:center; font-size:16px; letter-spacing:3px; margin-bottom:10px" autocomplete="off">
+      <input id="lock-password-confirm" type="password" placeholder="비밀번호 확인" style="text-align:center; font-size:16px; letter-spacing:3px; margin-bottom:10px; display:none" autocomplete="off">
+      <button class="primary" style="width:100%" onclick="submitLockScreen()">확인</button>
+      <div id="lock-error" class="warn" style="margin-top:10px; min-height:14px"></div>
+    </div>
+  </div>
+
+  <div id="app-content" style="display:none">
+  <div class="field-row" style="align-items:center; justify-content:space-between; margin-bottom:4px">
+    <h1 style="margin:0">🍞 솜리 베이킹실 통합 관리 시스템</h1>
+    <button class="secondary" onclick="lockApp()">🔒 잠그기</button>
+  </div>
+  <div class="subtitle">1~3단계 · 재료 · 레시피 · 원가계산 · 재고 · 업무일지 · 대시보드 (로컬 저장 · 프로토타입) · 카페 출고는 cafe-pickup.html에서</div>
+
+  <div class="tabs">
+    <button class="tab-btn" id="tab-ingredients-btn" data-tab="ingredients">재고관리</button>
+    <button class="tab-btn active" data-tab="inventory">재고 현황</button>
+    <button class="tab-btn" data-tab="po">발주 입고</button>
+    <button class="tab-btn" data-tab="worklog">업무일지</button>
+    <button class="tab-btn" id="tab-recipeform-btn" data-tab="recipe-form" style="display:none">레시피등록</button>
+    <button class="tab-btn" id="tab-recipelist-btn" data-tab="recipe-list" style="display:none">제품 원가</button>
+    <button class="tab-btn" id="tab-dashboard-btn" data-tab="dashboard" style="display:none">월간 대시보드</button>
+  </div>
+
+  <!-- 재료 관리 -->
+  <div class="panel" id="panel-ingredients">
+    <div class="card">
+      <h2 id="ing-form-title">재료 등록</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>재료명</label>
+          <input id="ing-name" placeholder="예: 박력분">
+        </div>
+        <div class="field">
+          <label>구매 수량</label>
+          <input id="ing-qty" type="number" min="0" step="any" placeholder="예: 1">
+        </div>
+        <div class="field">
+          <label>구매 단위</label>
+          <input id="ing-unit" placeholder="예: kg, g, ml, 개">
+        </div>
+        <div class="field">
+          <label>구매 가격 (원)</label>
+          <input id="ing-price" type="number" min="0" step="any" placeholder="예: 3500">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>현재 재고량</label>
+          <input id="ing-stock" type="number" min="0" step="any" placeholder="예: 5 (비워두면 0)">
+        </div>
+        <div class="field">
+          <label>재고 부족 기준 (이하일 때 알림)</label>
+          <input id="ing-min-stock" type="number" min="0" step="any" placeholder="예: 2 (선택사항)">
+        </div>
+      </div>
+      <div class="field-row">
+        <button class="primary" id="ing-submit-btn" onclick="submitIngredient()">추가하기</button>
+        <button class="secondary" id="ing-cancel-btn" style="display:none" onclick="cancelIngredientEdit()">취소</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field-row" style="align-items:center; justify-content:space-between; margin-bottom:10px">
+        <h2 style="margin:0">등록된 재료</h2>
+        <button class="secondary" onclick="bulkConvertKgToG()">kg → g 일괄 변환</button>
+      </div>
+      <div id="ingredient-table"></div>
+    </div>
+  </div>
+
+  <!-- 레시피 등록 -->
+  <div class="panel" id="panel-recipe-form">
+    <div class="card">
+      <h2 id="recipe-form-title">레시피 등록</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>제품명</label>
+          <input id="recipe-name" placeholder="예: 바스크치즈케이크">
+        </div>
+        <div class="field">
+          <label>이 배합(레시피)로 생산되는 수량 (최소 단위, 예: 조각)</label>
+          <input id="recipe-yield" type="number" min="1" step="1" value="1">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>묶음 단위명 (선택, 예: 박스)</label>
+          <input id="recipe-pack-label" placeholder="예: 박스 (카페에 이 단위로 출고할 때)">
+        </div>
+        <div class="field">
+          <label>묶음당 개수 (선택, 예: 10)</label>
+          <input id="recipe-pack-size" type="number" min="1" step="1" placeholder="예: 10 (10조각 = 1박스)">
+        </div>
+      </div>
+
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>재료 선택 (검색 가능)</label>
+          <input id="recipe-ing-search" list="recipe-ing-datalist" placeholder="재료 이름 입력해서 검색" autocomplete="off">
+          <datalist id="recipe-ing-datalist"></datalist>
+        </div>
+        <div class="field" style="max-width:140px">
+          <label>사용량 <span id="recipe-ing-unit-hint" style="color:var(--sub)"></span></label>
+          <input id="recipe-ing-amount" type="number" min="0" step="any" placeholder="0">
+        </div>
+        <div class="field" style="max-width:100px">
+          <button class="primary" onclick="addRecipeItem()">담기</button>
+        </div>
+      </div>
+
+      <div id="recipe-items-table"></div>
+
+      <div class="totals" id="recipe-live-totals" style="display:none">
+        <div class="box">
+          <div class="label">총 재료 원가</div>
+          <div class="value" id="recipe-live-total">0원</div>
+        </div>
+        <div class="box">
+          <div class="label">제품 1개당 원가</div>
+          <div class="value" id="recipe-live-per-unit">0원</div>
+        </div>
+      </div>
+
+      <div class="field-row" style="margin-top:14px">
+        <button class="primary" onclick="saveRecipe()">레시피 저장</button>
+        <button class="secondary" id="recipe-cancel-btn" style="display:none" onclick="cancelRecipeEdit()">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 원가 보기 -->
+  <div class="panel" id="panel-recipe-list">
+    <div id="recipe-list"></div>
+  </div>
+
+  <!-- 재고 관리 -->
+  <div class="panel active" id="panel-inventory">
+    <div class="card">
+      <h2>재고 입고 / 수정</h2>
+      <div class="segmented">
+        <button id="stock-mode-in" class="active" onclick="setStockMode('in')">입고 (재고 추가)</button>
+        <button id="stock-mode-set" onclick="setStockMode('set')">재고 직접 수정</button>
+      </div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>재료 선택</label>
+          <select id="stock-ing-select"></select>
+        </div>
+        <div class="field" style="max-width:160px">
+          <label id="stock-amount-label">입고 수량</label>
+          <input id="stock-amount" type="number" min="0" step="any" placeholder="0">
+        </div>
+        <div class="field">
+          <label>메모 (선택)</label>
+          <input id="stock-note" placeholder="예: 마켓봄 발주">
+        </div>
+        <div class="field" style="max-width:110px">
+          <button class="primary" onclick="submitStockChange()">처리</button>
+        </div>
+      </div>
+      <div class="hint" id="stock-current-hint"></div>
+    </div>
+
+    <div class="card">
+      <h2>재료별 현재 재고</h2>
+      <div id="inventory-table"></div>
+    </div>
+
+    <div class="card">
+      <h2>최근 재고 변동 내역</h2>
+      <div id="inventory-log"></div>
+    </div>
+  </div>
+
+  <!-- 발주 입고 -->
+  <div class="panel" id="panel-po">
+    <div class="card">
+      <h2>발주 텍스트 붙여넣기</h2>
+      <div class="hint">
+        마켓보로 등 주문내역 캡처를 Claude에게 보내면 아래 형식으로 정리해드립니다.<br>
+        한 줄에 상품 하나씩, <code>상품명 | 수량 | 금액</code> 형식으로 붙여넣으세요.<br>
+        예: <code>큐원 백설탕 15kg | 1 | 23000</code>
+      </div>
+      <textarea id="po-paste" rows="6" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13.5px; font-family:inherit;" placeholder="큐원 백설탕 15kg | 1 | 23000
+건국유업 생크림 500ml | 16 | 68800"></textarea>
+      <div class="field-row" style="margin-top:10px">
+        <button class="primary" onclick="parsePastedOrder()">파싱하기</button>
+      </div>
+    </div>
+
+    <div class="card" id="po-match-card" style="display:none">
+      <h2>재료 매칭 확인 후 일괄 입고</h2>
+      <div class="hint">입고 수량은 상품명의 용량(예: 1000ml, 15kg) × 수량으로 자동 계산했습니다. 재료의 등록 단위와 다르면 직접 수정하세요.</div>
+      <div id="po-match-table"></div>
+      <div class="field-row" style="margin-top:14px">
+        <button class="primary" onclick="applyBulkStockIn()">일괄 입고 처리</button>
+        <button class="secondary" onclick="cancelPendingOrder()">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 업무일지 -->
+  <div class="panel" id="panel-worklog">
+    <div class="card" id="employee-manage-card" style="display:none">
+      <h2>직원 관리</h2>
+      <div class="hint">인건비 계산에 사용됩니다 (배합 소요시간 × 시급). 시급은 관리자 모드에서만 보입니다.</div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>직원 이름</label>
+          <input id="emp-name" placeholder="예: 홍길동">
+        </div>
+        <div class="field" style="max-width:160px">
+          <label>시급 (원)</label>
+          <input id="emp-wage" type="number" min="0" step="any" placeholder="예: 10000">
+        </div>
+        <div class="field" style="max-width:100px">
+          <button class="primary" onclick="submitEmployee()">추가</button>
+        </div>
+      </div>
+      <div id="employee-table"></div>
+    </div>
+
+    <div class="card">
+      <h2 id="worklog-form-title">업무일지 작성</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>날짜</label>
+          <input id="wl-date" type="date">
+        </div>
+        <div class="field">
+          <label>제품(레시피)</label>
+          <select id="wl-recipe"></select>
+        </div>
+        <div class="field">
+          <label>배합 수</label>
+          <input id="wl-batches" type="number" min="0" step="any" placeholder="예: 1">
+        </div>
+        <div class="field">
+          <label>로스 수량 (개)</label>
+          <input id="wl-loss" type="number" min="0" step="any" placeholder="예: 0">
+        </div>
+      </div>
+
+      <div class="hint">공정별로 담당자와 소요시간이 다르면 아래에서 하나씩 담아주세요 (반죽/굽기/컷팅·포장 등).</div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>공정</label>
+          <select id="wl-stage-name">
+            <option value="반죽">반죽</option>
+            <option value="굽기">굽기</option>
+            <option value="컷팅/포장">컷팅/포장</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>담당 직원</label>
+          <select id="wl-stage-employee"></select>
+        </div>
+        <div class="field" style="max-width:120px">
+          <label>소요시간 (분)</label>
+          <input id="wl-stage-time" type="number" min="0" step="any" placeholder="예: 30">
+        </div>
+        <div class="field" style="max-width:100px">
+          <button class="primary" onclick="addWorkLogStage()">담기</button>
+        </div>
+      </div>
+      <div id="wl-stage-table"></div>
+
+      <div class="field-row" style="margin-top:10px">
+        <div class="field">
+          <label>메모 (선택)</label>
+          <input id="wl-note" placeholder="예: 오븐 온도 이슈로 1개 로스">
+        </div>
+      </div>
+      <div class="hint" id="wl-preview-hint"></div>
+      <div class="field-row">
+        <button class="primary" onclick="submitWorkLog()">저장 (재고 자동 차감)</button>
+        <button class="secondary" id="wl-cancel-btn" style="display:none" onclick="cancelWorkLogEdit()">취소</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>업무일지 목록</h2>
+      <div id="worklog-table"></div>
+    </div>
+  </div>
+
+  <!-- 월간 대시보드 -->
+  <div class="panel" id="panel-dashboard">
+    <div class="card">
+      <h2>월 선택</h2>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field" style="max-width:200px">
+          <label>월</label>
+          <input id="dash-month" type="month">
+        </div>
+        <div class="field" style="max-width:100px">
+          <button class="primary" onclick="renderDashboard()">조회</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>이번 달 요약</h2>
+      <div class="totals" id="dash-summary-1"></div>
+      <div class="totals" id="dash-summary-2" style="margin-top:0"></div>
+      <div class="hint">순수익(추정) = 카페 출고 총액(원가 기준) − 재료비 − 인건비 − 로스금액. 카페의 실제 판매 매출은 반영되지 않은 근사치입니다. 출고 등록은 별도의 "cafe-pickup.html" 페이지에서 이루어집니다.</div>
+    </div>
+
+    <div class="card">
+      <h2>직원 비밀번호 관리</h2>
+      <div class="hint">재료관리·레시피등록·원가보기·재고관리·발주입고·업무일지에 들어올 때 직원이 쓰는 비밀번호입니다. 잠금화면에서 이 비밀번호를 입력하면 열립니다 (대시보드는 제외).</div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>새 직원 비밀번호</label>
+          <input id="staff-pin-input" type="password" placeholder="4자리 이상">
+        </div>
+        <div class="field" style="max-width:120px">
+          <button class="primary" onclick="setStaffPin()">저장</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>카페 관리</h2>
+      <div class="hint">여기서 추가한 카페가 cafe-pickup.html의 출고 등록 화면에 나타납니다.</div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>카페 이름</label>
+          <input id="cafe-name" placeholder="예: 시트러스">
+        </div>
+        <div class="field" style="max-width:100px">
+          <button class="primary" onclick="submitCafe()">추가</button>
+        </div>
+      </div>
+      <div id="cafe-table"></div>
+    </div>
+
+    <div class="card">
+      <h2>카페별 공급액</h2>
+      <div id="dash-cafe-table"></div>
+    </div>
+
+    <div class="card">
+      <h2>직원별 생산성</h2>
+      <div id="dash-employee-table"></div>
+    </div>
+  </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LS_ING = 'somni_ingredients_v1';
+const LS_RECIPE = 'somni_recipes_v1';
+const LS_STOCK_LOG = 'somni_stock_logs_v1';
+const LS_EMPLOYEE = 'somni_employees_v1';
+const LS_CAFE = 'somni_cafes_v1';
+const LS_WORKLOG = 'somni_worklogs_v1';
+const LS_SHIPMENT = 'somni_shipments_v1';
+const LS_ADMIN_PIN = 'somni_admin_pin_v1';
+const LS_STAFF_PIN = 'somni_staff_pin_v1';
+
+let ingredients = loadJSON(LS_ING, []);
+let recipes = loadJSON(LS_RECIPE, []);
+let stockLogs = loadJSON(LS_STOCK_LOG, []);
+let employees = loadJSON(LS_EMPLOYEE, []);
+let cafes = loadJSON(LS_CAFE, null);
+let workLogs = loadJSON(LS_WORKLOG, []);
+let shipments = loadJSON(LS_SHIPMENT, []);
+
+if (cafes === null) {
+  cafes = [{ id: uid(), name: '시트러스' }, { id: uid(), name: '차와' }];
+  localStorage.setItem(LS_CAFE, JSON.stringify(cafes));
+}
+
+let editingIngredientId = null;
+let editingRecipeId = null;
+let currentRecipeItems = []; // {ingredientId, amount}
+let stockMode = 'in'; // 'in' | 'set'
+let editingWorkLogId = null;
+let adminMode = false;
+let staffMode = false;
+
+// ---------- Lock screen ----------
+function initLockScreen() {
+  const adminPin = localStorage.getItem(LS_ADMIN_PIN);
+  const hint = document.getElementById('lock-hint');
+  const confirmInput = document.getElementById('lock-password-confirm');
+  if (!adminPin) {
+    hint.textContent = '처음 사용이시군요. 관리자 비밀번호를 새로 설정해주세요 (4자리 이상).';
+    confirmInput.style.display = 'block';
+  } else {
+    hint.textContent = '비밀번호를 입력하세요.';
+    confirmInput.style.display = 'none';
+  }
+  document.getElementById('lock-password').value = '';
+  confirmInput.value = '';
+  document.getElementById('lock-error').textContent = '';
+  document.getElementById('lock-password').focus();
+}
+
+function submitLockScreen() {
+  const pw = document.getElementById('lock-password').value;
+  const adminPin = localStorage.getItem(LS_ADMIN_PIN);
+  const errEl = document.getElementById('lock-error');
+
+  if (!adminPin) {
+    const confirmPw = document.getElementById('lock-password-confirm').value;
+    if (!pw || pw.length < 4) { errEl.textContent = '4자리 이상 입력해주세요.'; return; }
+    if (pw !== confirmPw) { errEl.textContent = '비밀번호가 서로 다릅니다.'; return; }
+    localStorage.setItem(LS_ADMIN_PIN, pw);
+    adminMode = true;
+    unlockApp();
+    toast('관리자 비밀번호가 설정되었습니다.');
+    return;
+  }
+
+  if (pw === adminPin) {
+    adminMode = true;
+    unlockApp();
+    return;
+  }
+  const staffPin = localStorage.getItem(LS_STAFF_PIN);
+  if (staffPin && pw === staffPin) {
+    staffMode = true;
+    unlockApp();
+    return;
+  }
+  errEl.textContent = '비밀번호가 일치하지 않습니다.';
+}
+document.getElementById('lock-password').addEventListener('keydown', e => { if (e.key === 'Enter') submitLockScreen(); });
+document.getElementById('lock-password-confirm').addEventListener('keydown', e => { if (e.key === 'Enter') submitLockScreen(); });
+
+function unlockApp() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('app-content').style.display = 'block';
+  applyAdminVisibility();
+}
+
+function lockApp() {
+  adminMode = false;
+  staffMode = false;
+  document.getElementById('app-content').style.display = 'none';
+  document.getElementById('lock-screen').style.display = 'block';
+  initLockScreen();
+}
+
+function setStaffPin() {
+  const pin = document.getElementById('staff-pin-input').value;
+  if (!pin || pin.length < 4) { toast('4자리 이상 입력해주세요.'); return; }
+  localStorage.setItem(LS_STAFF_PIN, pin);
+  document.getElementById('staff-pin-input').value = '';
+  toast('직원 비밀번호가 저장되었습니다.');
+}
+
+function applyAdminVisibility() {
+  document.getElementById('tab-dashboard-btn').style.display = adminMode ? '' : 'none';
+  document.getElementById('tab-recipeform-btn').style.display = adminMode ? '' : 'none';
+  document.getElementById('tab-recipelist-btn').style.display = adminMode ? '' : 'none';
+  document.getElementById('employee-manage-card').style.display = adminMode ? 'block' : 'none';
+  if (!adminMode) {
+    const activePanel = document.querySelector('.panel.active');
+    const adminOnlyPanels = ['panel-dashboard', 'panel-recipe-form', 'panel-recipe-list'];
+    if (activePanel && adminOnlyPanels.includes(activePanel.id)) switchTab('inventory');
+  }
+}
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    console.error('load error', key, e);
+    return fallback;
+  }
+}
+function saveIngredients() { localStorage.setItem(LS_ING, JSON.stringify(ingredients)); }
+function saveRecipes() { localStorage.setItem(LS_RECIPE, JSON.stringify(recipes)); }
+function saveStockLogs() { localStorage.setItem(LS_STOCK_LOG, JSON.stringify(stockLogs)); }
+function saveEmployees() { localStorage.setItem(LS_EMPLOYEE, JSON.stringify(employees)); }
+function saveCafes() { localStorage.setItem(LS_CAFE, JSON.stringify(cafes)); }
+function saveWorkLogs() { localStorage.setItem(LS_WORKLOG, JSON.stringify(workLogs)); }
+function saveShipments() { localStorage.setItem(LS_SHIPMENT, JSON.stringify(shipments)); }
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 1600);
+}
+
+function fmtWon(n) {
+  const rounded = Math.round(n * 100) / 100;
+  return rounded.toLocaleString('ko-KR', { maximumFractionDigits: 2 }) + '원';
+}
+function fmtQty(n) {
+  const rounded = Math.round(n * 100) / 100;
+  return rounded.toLocaleString('ko-KR', { maximumFractionDigits: 2 });
+}
+
+function unitPrice(ing) {
+  if (!ing.purchaseQty || ing.purchaseQty <= 0) return 0;
+  return ing.purchasePrice / ing.purchaseQty;
+}
+
+// ---------- Tabs ----------
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  if (tab === 'recipe-list') renderRecipeList();
+  if (tab === 'recipe-form') populateIngredientSelect();
+  if (tab === 'inventory') { populateStockSelect(); renderInventoryTable(); renderInventoryLog(); }
+  if (tab === 'worklog') {
+    renderEmployees();
+    populateWorkLogSelects();
+    renderWorkLogStages();
+    renderWorkLogTable();
+    if (!document.getElementById('wl-date').value) {
+      document.getElementById('wl-date').value = todayStr();
+    }
+  }
+  if (tab === 'dashboard') {
+    renderCafes();
+    if (!document.getElementById('dash-month').value) {
+      document.getElementById('dash-month').value = todayStr().slice(0, 7);
+    }
+    renderDashboard();
+  }
+}
+
+function todayStr() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+// ---------- Ingredients ----------
+function submitIngredient() {
+  const name = document.getElementById('ing-name').value.trim();
+  const qty = parseFloat(document.getElementById('ing-qty').value);
+  const unit = document.getElementById('ing-unit').value.trim();
+  const price = parseFloat(document.getElementById('ing-price').value);
+  const stockInput = document.getElementById('ing-stock').value;
+  const stock = stockInput === '' ? 0 : parseFloat(stockInput);
+  const minStockInput = document.getElementById('ing-min-stock').value;
+  const minStock = minStockInput === '' ? null : parseFloat(minStockInput);
+
+  if (!name || !unit || !(qty > 0) || !(price >= 0) || isNaN(price) || isNaN(stock) || stock < 0) {
+    toast('필수 항목을 올바르게 입력해주세요.');
+    return;
+  }
+
+  if (editingIngredientId) {
+    const ing = ingredients.find(i => i.id === editingIngredientId);
+    Object.assign(ing, { name, purchaseQty: qty, purchaseUnit: unit, purchasePrice: price, stock, minStock });
+    toast('재료가 수정되었습니다.');
+    cancelIngredientEdit();
+  } else {
+    ingredients.push({ id: uid(), name, purchaseQty: qty, purchaseUnit: unit, purchasePrice: price, stock, minStock });
+    toast('재료가 추가되었습니다.');
+    clearIngredientForm();
+  }
+  saveIngredients();
+  renderIngredients();
+}
+
+function clearIngredientForm() {
+  document.getElementById('ing-name').value = '';
+  document.getElementById('ing-qty').value = '';
+  document.getElementById('ing-unit').value = '';
+  document.getElementById('ing-price').value = '';
+  document.getElementById('ing-stock').value = '';
+  document.getElementById('ing-min-stock').value = '';
+}
+
+function editIngredient(id) {
+  const ing = ingredients.find(i => i.id === id);
+  if (!ing) return;
+  editingIngredientId = id;
+  document.getElementById('ing-name').value = ing.name;
+  document.getElementById('ing-qty').value = ing.purchaseQty;
+  document.getElementById('ing-unit').value = ing.purchaseUnit;
+  document.getElementById('ing-price').value = ing.purchasePrice;
+  document.getElementById('ing-stock').value = ing.stock ?? 0;
+  document.getElementById('ing-min-stock').value = ing.minStock ?? '';
+  document.getElementById('ing-form-title').textContent = '재료 수정';
+  document.getElementById('ing-submit-btn').textContent = '수정 완료';
+  document.getElementById('ing-cancel-btn').style.display = 'inline-block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelIngredientEdit() {
+  editingIngredientId = null;
+  clearIngredientForm();
+  document.getElementById('ing-form-title').textContent = '재료 등록';
+  document.getElementById('ing-submit-btn').textContent = '추가하기';
+  document.getElementById('ing-cancel-btn').style.display = 'none';
+}
+
+function deleteIngredient(id) {
+  const usedIn = recipes.filter(r => r.items.some(it => it.ingredientId === id));
+  if (usedIn.length > 0) {
+    const names = usedIn.map(r => r.name).join(', ');
+    if (!confirm(`이 재료는 다음 레시피에서 사용 중입니다: ${names}\n그래도 삭제하시겠습니까?`)) return;
+  } else {
+    if (!confirm('이 재료를 삭제하시겠습니까?')) return;
+  }
+  ingredients = ingredients.filter(i => i.id !== id);
+  saveIngredients();
+  renderIngredients();
+}
+
+function renderIngredients() {
+  const el = document.getElementById('ingredient-table');
+  if (ingredients.length === 0) {
+    el.innerHTML = '<div class="empty">등록된 재료가 없습니다.</div>';
+    return;
+  }
+  let rows = ingredients.map(ing => {
+    const stock = ing.stock ?? 0;
+    const isLow = ing.minStock != null && stock <= ing.minStock;
+    return `
+    <tr>
+      <td>${escapeHtml(ing.name)}</td>
+      <td class="num">${ing.purchaseQty} ${escapeHtml(ing.purchaseUnit)}</td>
+      <td class="num">${fmtWon(ing.purchasePrice)}</td>
+      <td class="num">${fmtWon(unitPrice(ing))} / ${escapeHtml(ing.purchaseUnit)}</td>
+      <td class="num">${fmtQty(stock)} ${escapeHtml(ing.purchaseUnit)} ${isLow ? '<span class="badge low">부족</span>' : ''}</td>
+      <td class="num">
+        <button class="link" onclick="editIngredient('${ing.id}')">수정</button>
+        <button class="link" onclick="convertIngredientUnit('${ing.id}')">단위변환</button>
+        <button class="link danger" onclick="deleteIngredient('${ing.id}')">삭제</button>
+      </td>
+    </tr>
+  `;
+  }).join('');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>재료명</th><th class="num">구매 단위/수량</th><th class="num">구매 가격</th><th class="num">단위당 단가</th><th class="num">현재 재고</th><th class="num"></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function applyUnitConversion(ing, newUnit, factor) {
+  const usedRecipes = recipes.filter(r => r.items.some(it => it.ingredientId === ing.id));
+  ing.purchaseQty = ing.purchaseQty * factor;
+  ing.stock = (ing.stock ?? 0) * factor;
+  if (ing.minStock != null) ing.minStock = ing.minStock * factor;
+  ing.purchaseUnit = newUnit;
+  usedRecipes.forEach(r => {
+    r.items.forEach(it => {
+      if (it.ingredientId === ing.id) it.amount = it.amount * factor;
+    });
+  });
+  return usedRecipes.length;
+}
+
+function convertIngredientUnit(id) {
+  const ing = ingredients.find(i => i.id === id);
+  if (!ing) return;
+
+  const newUnit = prompt(`새 단위명을 입력하세요 (현재: ${ing.purchaseUnit})`, ing.purchaseUnit);
+  if (!newUnit || !newUnit.trim() || newUnit.trim() === ing.purchaseUnit) return;
+
+  const factorInput = prompt(`1${ing.purchaseUnit} = 몇 ${newUnit.trim()}인가요?\n예: 1kg → g이면 1000 입력, 1L → ml이면 1000 입력`);
+  const factor = parseFloat(factorInput);
+  if (!(factor > 0)) { toast('변환 배수를 올바르게 입력해주세요.'); return; }
+
+  const usedRecipeCount = recipes.filter(r => r.items.some(it => it.ingredientId === id)).length;
+  const ok = confirm(
+    `"${ing.name}"의 단위를 "${ing.purchaseUnit}" → "${newUnit.trim()}"로 변환합니다.\n` +
+    `구매수량·재고가 ${factor}배로 바뀌고, 이 재료를 쓰는 레시피 ${usedRecipeCount}개의 사용량도 함께 ${factor}배로 자동 변환됩니다.\n계속할까요?`
+  );
+  if (!ok) return;
+
+  applyUnitConversion(ing, newUnit.trim(), factor);
+  saveIngredients();
+  saveRecipes();
+
+  toast(`단위가 변환되었습니다 (레시피 ${usedRecipeCount}개 함께 업데이트).`);
+  renderIngredients();
+  renderRecipeList();
+}
+
+function bulkConvertKgToG() {
+  const targets = ingredients.filter(i => i.purchaseUnit.trim().toLowerCase() === 'kg');
+  if (targets.length === 0) { toast('kg 단위로 등록된 재료가 없습니다.'); return; }
+
+  const names = targets.map(i => i.name).join(', ');
+  const ok = confirm(
+    `다음 재료를 kg → g로 일괄 변환합니다 (구매수량·재고 ×1000, 관련 레시피 사용량도 함께 변환):\n${names}\n계속할까요?`
+  );
+  if (!ok) return;
+
+  let recipeUpdateCount = 0;
+  targets.forEach(ing => {
+    recipeUpdateCount += applyUnitConversion(ing, 'g', 1000);
+  });
+  saveIngredients();
+  saveRecipes();
+
+  toast(`재료 ${targets.length}개가 g로 변환되었습니다 (레시피 ${recipeUpdateCount}건 함께 업데이트).`);
+  renderIngredients();
+  renderRecipeList();
+}
+
+// ---------- Recipe form ----------
+function populateIngredientSelect() {
+  const list = document.getElementById('recipe-ing-datalist');
+  list.innerHTML = ingredients.map(i => `<option value="${escapeHtml(i.name)}" data-id="${i.id}"></option>`).join('');
+  document.getElementById('recipe-ing-search').value = '';
+  document.getElementById('recipe-ing-unit-hint').textContent = '';
+}
+document.getElementById('recipe-ing-search').addEventListener('input', updateUnitHint);
+function findIngredientByName(name) {
+  return ingredients.find(i => i.name === name);
+}
+function updateUnitHint() {
+  const name = document.getElementById('recipe-ing-search').value;
+  const ing = findIngredientByName(name);
+  document.getElementById('recipe-ing-unit-hint').textContent = ing ? `(${ing.purchaseUnit} 기준)` : '';
+}
+
+function addRecipeItem() {
+  const name = document.getElementById('recipe-ing-search').value;
+  const ing = findIngredientByName(name);
+  const amount = parseFloat(document.getElementById('recipe-ing-amount').value);
+  if (!ing) { toast('목록에서 재료를 정확히 선택해주세요.'); return; }
+  if (!(amount > 0)) { toast('사용량을 올바르게 입력해주세요.'); return; }
+
+  const existing = currentRecipeItems.find(it => it.ingredientId === ing.id);
+  if (existing) {
+    existing.amount += amount;
+  } else {
+    currentRecipeItems.push({ ingredientId: ing.id, amount });
+  }
+  document.getElementById('recipe-ing-amount').value = '';
+  document.getElementById('recipe-ing-search').value = '';
+  document.getElementById('recipe-ing-unit-hint').textContent = '';
+  renderRecipeItems();
+}
+
+function removeRecipeItem(ingId) {
+  currentRecipeItems = currentRecipeItems.filter(it => it.ingredientId !== ingId);
+  renderRecipeItems();
+}
+
+function renderRecipeItems() {
+  const el = document.getElementById('recipe-items-table');
+  const totalsBox = document.getElementById('recipe-live-totals');
+
+  if (currentRecipeItems.length === 0) {
+    el.innerHTML = '<div class="empty">담긴 재료가 없습니다.</div>';
+    totalsBox.style.display = 'none';
+    return;
+  }
+
+  let total = 0;
+  const rows = currentRecipeItems.map(it => {
+    const ing = ingredients.find(i => i.id === it.ingredientId);
+    const name = ing ? ing.name : '(삭제된 재료)';
+    const unit = ing ? ing.purchaseUnit : '';
+    const cost = ing ? it.amount * unitPrice(ing) : 0;
+    total += cost;
+    return `
+      <div class="mini-row">
+        <span>${escapeHtml(name)} — ${it.amount}${escapeHtml(unit)}</span>
+        <span>${fmtWon(cost)} <button class="link danger" onclick="removeRecipeItem('${it.ingredientId}')">삭제</button></span>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = rows;
+
+  const yieldQty = Math.max(1, parseFloat(document.getElementById('recipe-yield').value) || 1);
+  document.getElementById('recipe-live-total').textContent = fmtWon(total);
+  document.getElementById('recipe-live-per-unit').textContent = fmtWon(total / yieldQty);
+  totalsBox.style.display = 'flex';
+}
+document.getElementById('recipe-yield').addEventListener('input', renderRecipeItems);
+
+function saveRecipe() {
+  const name = document.getElementById('recipe-name').value.trim();
+  const yieldQty = parseFloat(document.getElementById('recipe-yield').value);
+  const packLabel = document.getElementById('recipe-pack-label').value.trim() || null;
+  const packSizeInput = document.getElementById('recipe-pack-size').value;
+  const packSize = (packLabel && packSizeInput) ? parseFloat(packSizeInput) : null;
+
+  if (!name) { toast('제품명을 입력해주세요.'); return; }
+  if (!(yieldQty > 0)) { toast('생산 수량을 올바르게 입력해주세요.'); return; }
+  if (currentRecipeItems.length === 0) { toast('재료를 최소 1개 이상 담아주세요.'); return; }
+  if (packLabel && !(packSize > 0)) { toast('묶음당 개수를 올바르게 입력해주세요.'); return; }
+
+  if (editingRecipeId) {
+    const r = recipes.find(r => r.id === editingRecipeId);
+    Object.assign(r, { name, yieldQty, packLabel, packSize, items: currentRecipeItems.map(it => ({...it})) });
+    toast('레시피가 수정되었습니다.');
+  } else {
+    recipes.push({ id: uid(), name, yieldQty, packLabel, packSize, items: currentRecipeItems.map(it => ({...it})) });
+    toast('레시피가 저장되었습니다.');
+  }
+  saveRecipes();
+  cancelRecipeEdit();
+  switchTab('recipe-list');
+}
+
+function cancelRecipeEdit() {
+  editingRecipeId = null;
+  currentRecipeItems = [];
+  document.getElementById('recipe-name').value = '';
+  document.getElementById('recipe-yield').value = 1;
+  document.getElementById('recipe-pack-label').value = '';
+  document.getElementById('recipe-pack-size').value = '';
+  document.getElementById('recipe-form-title').textContent = '레시피 등록';
+  document.getElementById('recipe-cancel-btn').style.display = 'none';
+  renderRecipeItems();
+}
+
+function editRecipe(id) {
+  const r = recipes.find(r => r.id === id);
+  if (!r) return;
+  editingRecipeId = id;
+  currentRecipeItems = r.items.map(it => ({...it}));
+  document.getElementById('recipe-name').value = r.name;
+  document.getElementById('recipe-yield').value = r.yieldQty;
+  document.getElementById('recipe-pack-label').value = r.packLabel || '';
+  document.getElementById('recipe-pack-size').value = r.packSize || '';
+  document.getElementById('recipe-form-title').textContent = '레시피 수정';
+  document.getElementById('recipe-cancel-btn').style.display = 'inline-block';
+  switchTab('recipe-form');
+  renderRecipeItems();
+}
+
+function deleteRecipe(id) {
+  if (!confirm('이 레시피를 삭제하시겠습니까?')) return;
+  recipes = recipes.filter(r => r.id !== id);
+  saveRecipes();
+  renderRecipeList();
+}
+
+// ---------- Recipe list / cost view ----------
+function calcRecipeCost(r) {
+  let total = 0;
+  let hasMissing = false;
+  const detail = r.items.map(it => {
+    const ing = ingredients.find(i => i.id === it.ingredientId);
+    if (!ing) { hasMissing = true; return { name: '(삭제된 재료)', amount: it.amount, unit: '', cost: 0 }; }
+    const cost = it.amount * unitPrice(ing);
+    total += cost;
+    return { name: ing.name, amount: it.amount, unit: ing.purchaseUnit, cost };
+  });
+  return { total, perUnit: total / r.yieldQty, detail, hasMissing };
+}
+
+function toggleRecipeDetail(id) {
+  const el = document.getElementById('detail-' + id);
+  el.classList.toggle('open');
+}
+
+function renderRecipeList() {
+  const el = document.getElementById('recipe-list');
+  if (recipes.length === 0) {
+    el.innerHTML = '<div class="card"><div class="empty">등록된 레시피가 없습니다. "레시피 등록" 탭에서 추가해보세요.</div></div>';
+    return;
+  }
+
+  el.innerHTML = recipes.map(r => {
+    const { total, perUnit, detail, hasMissing } = calcRecipeCost(r);
+    const detailRows = detail.map(d => `
+      <div class="mini-row">
+        <span>${escapeHtml(d.name)} — ${d.amount}${escapeHtml(d.unit)}</span>
+        <span>${fmtWon(d.cost)}</span>
+      </div>
+    `).join('');
+    return `
+      <div class="card recipe-card">
+        <div class="field-row" style="align-items:center; justify-content:space-between; margin-bottom:0">
+          <h2 style="margin:0">${escapeHtml(r.name)} <span class="badge">${r.yieldQty}개 분량</span> ${r.packLabel && r.packSize ? `<span class="badge">${r.packSize}개 = 1${escapeHtml(r.packLabel)}</span>` : ''} ${hasMissing ? '<span class="warn">⚠ 삭제된 재료 포함</span>' : ''}</h2>
+          <div>
+            <button class="link" onclick="editRecipe('${r.id}')">수정</button>
+            <button class="link danger" onclick="deleteRecipe('${r.id}')">삭제</button>
+          </div>
+        </div>
+        <div class="totals">
+          <div class="box">
+            <div class="label">총 재료 원가</div>
+            <div class="value">${fmtWon(total)}</div>
+          </div>
+          <div class="box">
+            <div class="label">제품 1개당 원가</div>
+            <div class="value big">${fmtWon(perUnit)}</div>
+          </div>
+        </div>
+        <button class="secondary" style="margin-top:10px" onclick="toggleRecipeDetail('${r.id}')">재료 상세 보기</button>
+        <div class="recipe-detail" id="detail-${r.id}">${detailRows}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ---------- Inventory (stock) ----------
+function setStockMode(mode) {
+  stockMode = mode;
+  document.getElementById('stock-mode-in').classList.toggle('active', mode === 'in');
+  document.getElementById('stock-mode-set').classList.toggle('active', mode === 'set');
+  document.getElementById('stock-amount-label').textContent = mode === 'in' ? '입고 수량' : '수정 후 재고량';
+  updateStockHint();
+}
+
+function populateStockSelect() {
+  const sel = document.getElementById('stock-ing-select');
+  if (ingredients.length === 0) {
+    sel.innerHTML = '<option value="">등록된 재료가 없습니다</option>';
+    document.getElementById('stock-current-hint').textContent = '';
+    return;
+  }
+  const prev = sel.value;
+  sel.innerHTML = ingredients.map(i => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('');
+  if (prev && ingredients.some(i => i.id === prev)) sel.value = prev;
+  updateStockHint();
+}
+document.getElementById('stock-ing-select').addEventListener('change', updateStockHint);
+function updateStockHint() {
+  const sel = document.getElementById('stock-ing-select');
+  const ing = ingredients.find(i => i.id === sel.value);
+  document.getElementById('stock-current-hint').textContent = ing
+    ? `현재 재고: ${fmtQty(ing.stock ?? 0)} ${ing.purchaseUnit}`
+    : '';
+}
+
+function submitStockChange() {
+  const ingId = document.getElementById('stock-ing-select').value;
+  const amount = parseFloat(document.getElementById('stock-amount').value);
+  const note = document.getElementById('stock-note').value.trim();
+  const ing = ingredients.find(i => i.id === ingId);
+
+  if (!ing) { toast('재료를 먼저 등록해주세요.'); return; }
+  if (isNaN(amount) || amount < 0) { toast('수량을 올바르게 입력해주세요.'); return; }
+
+  const before = ing.stock ?? 0;
+  let after, change, type;
+  if (stockMode === 'in') {
+    change = amount;
+    after = before + amount;
+    type = '입고';
+  } else {
+    after = amount;
+    change = after - before;
+    type = '재고 수정';
+  }
+  ing.stock = after;
+  saveIngredients();
+
+  stockLogs.unshift({
+    id: uid(), ingredientId: ingId, ingredientName: ing.name, unit: ing.purchaseUnit,
+    date: new Date().toISOString().slice(0, 10), type, change, after, note
+  });
+  if (stockLogs.length > 200) stockLogs.length = 200;
+  saveStockLogs();
+
+  document.getElementById('stock-amount').value = '';
+  document.getElementById('stock-note').value = '';
+  toast(type + ' 처리되었습니다.');
+  updateStockHint();
+  renderInventoryTable();
+  renderInventoryLog();
+  renderIngredients();
+}
+
+function renderInventoryTable() {
+  const el = document.getElementById('inventory-table');
+  if (ingredients.length === 0) {
+    el.innerHTML = '<div class="empty">등록된 재료가 없습니다.</div>';
+    return;
+  }
+  const rows = ingredients.map(ing => {
+    const stock = ing.stock ?? 0;
+    const isLow = ing.minStock != null && stock <= ing.minStock;
+    return `
+      <tr>
+        <td>${escapeHtml(ing.name)} ${isLow ? '<span class="badge low">부족</span>' : ''}</td>
+        <td class="num">${fmtQty(stock)} ${escapeHtml(ing.purchaseUnit)}</td>
+        <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + ' ' + escapeHtml(ing.purchaseUnit) : '-'}</td>
+      </tr>
+    `;
+  }).join('');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>재료명</th><th class="num">현재 재고</th><th class="num">부족 기준</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderInventoryLog() {
+  const el = document.getElementById('inventory-log');
+  if (stockLogs.length === 0) {
+    el.innerHTML = '<div class="empty">재고 변동 내역이 없습니다.</div>';
+    return;
+  }
+  const rows = stockLogs.slice(0, 30).map(log => `
+    <div class="mini-row">
+      <span>${log.date} · ${escapeHtml(log.ingredientName)} · ${log.type}</span>
+      <span>${log.change >= 0 ? '+' : ''}${fmtQty(log.change)}${escapeHtml(log.unit)} → ${fmtQty(log.after)}${escapeHtml(log.unit)} ${log.note ? '<span class="badge">' + escapeHtml(log.note) + '</span>' : ''}</span>
+    </div>
+  `).join('');
+  el.innerHTML = rows;
+}
+
+// ---------- 발주 입고 (order paste -> parse -> match -> bulk stock-in) ----------
+let pendingOrderRows = []; // {rawName, qty, amount, packSize, guessQty}
+
+function extractPackSize(name) {
+  const re = /(\d+(?:\.\d+)?)\s?(kg|g|ml|L|l)\b/g;
+  let m, last = null;
+  while ((m = re.exec(name)) !== null) { last = m; }
+  if (!last) return null;
+  let unit = last[2];
+  if (unit === 'L') unit = 'l';
+  return { value: parseFloat(last[1]), unit };
+}
+
+function findIngredientMatch(name) {
+  const lower = name.toLowerCase();
+  return ingredients.find(i => {
+    const iname = i.name.toLowerCase();
+    return lower.includes(iname) || iname.includes(lower);
+  });
+}
+
+function parsePastedOrder() {
+  const text = document.getElementById('po-paste').value;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) { toast('붙여넣을 내용이 없습니다.'); return; }
+
+  pendingOrderRows = lines.map(line => {
+    let name = '', qty = NaN, amount = NaN;
+    if (line.includes('|')) {
+      const parts = line.split('|').map(p => p.trim());
+      name = parts[0] || '';
+      qty = parseFloat((parts[1] || '').replace(/[^0-9.]/g, ''));
+      amount = parseFloat((parts[2] || '').replace(/[^0-9.]/g, ''));
+    } else {
+      const m = line.match(/^(.+?)\s*(?:수량)?[:\s]*([\d,]+(?:\.\d+)?)\s*(?:개|ea)?\s*[\/,]?\s*([\d,]+(?:\.\d+)?)\s*원/);
+      if (m) {
+        name = m[1].trim();
+        qty = parseFloat(m[2].replace(/,/g, ''));
+        amount = parseFloat(m[3].replace(/,/g, ''));
+      }
+    }
+    const packSize = name ? extractPackSize(name) : null;
+    const validQty = !isNaN(qty) ? qty : null;
+    const guessQty = (packSize && validQty) ? packSize.value * validQty : validQty;
+    return {
+      rawName: name || line,
+      qty: validQty,
+      amount: !isNaN(amount) ? amount : null,
+      packSize,
+      guessQty
+    };
+  });
+  renderPoMatchTable();
+}
+
+function renderPoMatchTable() {
+  const card = document.getElementById('po-match-card');
+  const el = document.getElementById('po-match-table');
+  if (pendingOrderRows.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  el.innerHTML = pendingOrderRows.map((row, idx) => {
+    const match = findIngredientMatch(row.rawName);
+    const options = [
+      `<option value="skip">건너뛰기</option>`,
+      `<option value="new" ${!match ? 'selected' : ''}>새 재료로 등록</option>`,
+      ...ingredients.map(i => `<option value="${i.id}" ${match && match.id === i.id ? 'selected' : ''}>${escapeHtml(i.name)}</option>`)
+    ].join('');
+    const isNew = !match;
+    const unitHint = match ? `(${escapeHtml(match.purchaseUnit)} 기준)` : '(신규 등록 단위 사용)';
+    const purchQtyDefault = row.packSize ? row.packSize.value : (row.qty ?? '');
+    const purchPriceDefault = (row.qty && row.amount) ? Math.round(row.amount / row.qty) : (row.amount ?? '');
+    return `
+      <div class="card" style="padding:12px; margin-bottom:10px; background:var(--bg)">
+        <div class="field-row" style="margin-bottom:8px">
+          <div class="field" style="min-width:220px">
+            <label>원본 상품명</label>
+            <div style="padding:8px 0; font-size:13.5px">${escapeHtml(row.rawName)}</div>
+          </div>
+          <div class="field">
+            <label>재료 매칭</label>
+            <select id="po-match-${idx}" onchange="onPoMatchChange(${idx})">${options}</select>
+          </div>
+        </div>
+        <div class="field-row" id="po-new-fields-${idx}" style="display:${isNew ? 'flex' : 'none'}">
+          <div class="field">
+            <label>구매단위 (레시피에서 쓸 단위, 예: g, ml, 개)</label>
+            <input id="po-unit-${idx}" placeholder="${row.packSize ? row.packSize.unit : '개'}">
+          </div>
+          <div class="field">
+            <label>구매수량 (그 단위 기준)</label>
+            <input id="po-purchqty-${idx}" type="number" step="any" value="${purchQtyDefault}">
+          </div>
+          <div class="field">
+            <label>구매가격 (원)</label>
+            <input id="po-purchprice-${idx}" type="number" step="any" value="${purchPriceDefault}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>입고(재고 증가) 수량 <span id="po-unit-hint-${idx}" style="color:var(--sub)">${unitHint}</span></label>
+            <input id="po-stockqty-${idx}" type="number" step="any" value="${row.guessQty ?? ''}">
+          </div>
+          <div class="field">
+            <label>메모</label>
+            <input id="po-note-${idx}" value="발주입고: ${escapeHtml(row.rawName)}">
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function onPoMatchChange(idx) {
+  const sel = document.getElementById(`po-match-${idx}`);
+  const mode = sel.value;
+  const isNew = mode === 'new';
+  document.getElementById(`po-new-fields-${idx}`).style.display = isNew ? 'flex' : 'none';
+  const hint = document.getElementById(`po-unit-hint-${idx}`);
+  if (mode === 'skip') {
+    hint.textContent = '';
+  } else if (isNew) {
+    hint.textContent = '(신규 등록 단위 사용)';
+  } else {
+    const ing = ingredients.find(i => i.id === mode);
+    hint.textContent = ing ? `(${ing.purchaseUnit} 기준)` : '';
+  }
+}
+
+function applyBulkStockIn() {
+  let count = 0;
+  pendingOrderRows.forEach((row, idx) => {
+    const sel = document.getElementById(`po-match-${idx}`);
+    if (!sel) return;
+    const mode = sel.value;
+    if (mode === 'skip') return;
+
+    const stockQty = parseFloat(document.getElementById(`po-stockqty-${idx}`).value);
+    const note = document.getElementById(`po-note-${idx}`).value.trim();
+    if (isNaN(stockQty) || stockQty <= 0) return;
+
+    let ing;
+    if (mode === 'new') {
+      const unit = document.getElementById(`po-unit-${idx}`).value.trim() || '개';
+      const purchQty = parseFloat(document.getElementById(`po-purchqty-${idx}`).value) || stockQty;
+      const purchPrice = parseFloat(document.getElementById(`po-purchprice-${idx}`).value) || 0;
+      ing = { id: uid(), name: row.rawName, purchaseQty: purchQty, purchaseUnit: unit, purchasePrice: purchPrice, stock: 0, minStock: null };
+      ingredients.push(ing);
+    } else {
+      ing = ingredients.find(i => i.id === mode);
+    }
+    if (!ing) return;
+
+    const before = ing.stock ?? 0;
+    ing.stock = before + stockQty;
+    stockLogs.unshift({
+      id: uid(), ingredientId: ing.id, ingredientName: ing.name, unit: ing.purchaseUnit,
+      date: todayStr(), type: '발주 입고', change: stockQty, after: ing.stock, note
+    });
+    count++;
+  });
+  if (stockLogs.length > 300) stockLogs.length = 300;
+
+  saveIngredients();
+  saveStockLogs();
+  toast(`${count}건 입고 처리되었습니다.`);
+  cancelPendingOrder();
+  renderIngredients();
+}
+
+function cancelPendingOrder() {
+  pendingOrderRows = [];
+  document.getElementById('po-paste').value = '';
+  document.getElementById('po-match-card').style.display = 'none';
+  document.getElementById('po-match-table').innerHTML = '';
+}
+
+// ---------- Employees ----------
+function submitEmployee() {
+  const name = document.getElementById('emp-name').value.trim();
+  const wage = parseFloat(document.getElementById('emp-wage').value);
+  if (!name || isNaN(wage) || wage < 0) { toast('직원 이름과 시급을 올바르게 입력해주세요.'); return; }
+  employees.push({ id: uid(), name, hourlyWage: wage });
+  saveEmployees();
+  document.getElementById('emp-name').value = '';
+  document.getElementById('emp-wage').value = '';
+  renderEmployees();
+  populateWorkLogSelects();
+  toast('직원이 추가되었습니다.');
+}
+
+function deleteEmployee(id) {
+  const usedIn = workLogs.some(w => w.employeeId === id);
+  if (usedIn && !confirm('이 직원의 업무일지 기록이 있습니다. 그래도 삭제하시겠습니까?')) return;
+  if (!usedIn && !confirm('이 직원을 삭제하시겠습니까?')) return;
+  employees = employees.filter(e => e.id !== id);
+  saveEmployees();
+  renderEmployees();
+  populateWorkLogSelects();
+}
+
+function renderEmployees() {
+  const el = document.getElementById('employee-table');
+  if (employees.length === 0) { el.innerHTML = '<div class="empty">등록된 직원이 없습니다.</div>'; return; }
+  const rows = employees.map(e => `
+    <tr>
+      <td>${escapeHtml(e.name)}</td>
+      <td class="num">${fmtWon(e.hourlyWage)} / 시간</td>
+      <td class="num"><button class="link danger" onclick="deleteEmployee('${e.id}')">삭제</button></td>
+    </tr>
+  `).join('');
+  el.innerHTML = `<table><thead><tr><th>이름</th><th class="num">시급</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ---------- Cafes ----------
+function submitCafe() {
+  const name = document.getElementById('cafe-name').value.trim();
+  if (!name) { toast('카페 이름을 입력해주세요.'); return; }
+  cafes.push({ id: uid(), name });
+  saveCafes();
+  document.getElementById('cafe-name').value = '';
+  renderCafes();
+  toast('카페가 추가되었습니다.');
+}
+
+function deleteCafe(id) {
+  const usedIn = shipments.some(s => s.cafeId === id);
+  if (usedIn && !confirm('이 카페의 출고 기록이 있습니다. 그래도 삭제하시겠습니까?')) return;
+  if (!usedIn && !confirm('이 카페를 삭제하시겠습니까?')) return;
+  cafes = cafes.filter(c => c.id !== id);
+  saveCafes();
+  renderCafes();
+}
+
+function renderCafes() {
+  const el = document.getElementById('cafe-table');
+  if (cafes.length === 0) { el.innerHTML = '<div class="empty">등록된 카페가 없습니다.</div>'; return; }
+  const rows = cafes.map(c => `
+    <tr>
+      <td>${escapeHtml(c.name)}</td>
+      <td class="num"><button class="link danger" onclick="deleteCafe('${c.id}')">삭제</button></td>
+    </tr>
+  `).join('');
+  el.innerHTML = `<table><thead><tr><th>카페명</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ---------- Work log (업무일지) ----------
+let currentWorkLogStages = []; // {stageName, employeeId, timeMinutes}
+
+function populateWorkLogSelects() {
+  const empSel = document.getElementById('wl-stage-employee');
+  empSel.innerHTML = employees.length
+    ? employees.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('')
+    : '<option value="">등록된 직원이 없습니다</option>';
+
+  const recSel = document.getElementById('wl-recipe');
+  recSel.innerHTML = recipes.length
+    ? recipes.map(r => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join('')
+    : '<option value="">등록된 레시피가 없습니다</option>';
+
+  updateWorkLogPreview();
+}
+document.getElementById('wl-recipe').addEventListener('change', updateWorkLogPreview);
+document.getElementById('wl-batches').addEventListener('input', updateWorkLogPreview);
+document.getElementById('wl-loss').addEventListener('input', updateWorkLogPreview);
+
+function updateWorkLogPreview() {
+  const hint = document.getElementById('wl-preview-hint');
+  const recipe = recipes.find(r => r.id === document.getElementById('wl-recipe').value);
+  const batches = parseFloat(document.getElementById('wl-batches').value);
+  if (!recipe || !(batches > 0)) { hint.textContent = ''; return; }
+  const loss = parseFloat(document.getElementById('wl-loss').value) || 0;
+  const producedQty = recipe.yieldQty * batches - loss;
+  const shortages = recipe.items
+    .map(it => {
+      const ing = ingredients.find(i => i.id === it.ingredientId);
+      if (!ing) return null;
+      const needed = it.amount * batches;
+      const after = (ing.stock ?? 0) - needed;
+      return after < 0 ? `${ing.name}(${fmtQty(after)}${ing.purchaseUnit})` : null;
+    })
+    .filter(Boolean);
+  hint.innerHTML = `저장 시 생산량 ${fmtQty(producedQty)}개, 재료 재고가 자동 차감됩니다.` +
+    (shortages.length ? ` <span class="warn">⚠ 재고 부족 예상: ${shortages.join(', ')}</span>` : '');
+}
+
+function addWorkLogStage() {
+  const stageName = document.getElementById('wl-stage-name').value;
+  const employeeId = document.getElementById('wl-stage-employee').value;
+  const timeMinutes = parseFloat(document.getElementById('wl-stage-time').value);
+  if (!employeeId) { toast('담당 직원을 먼저 등록/선택해주세요.'); return; }
+  if (!(timeMinutes > 0)) { toast('소요시간을 올바르게 입력해주세요.'); return; }
+
+  currentWorkLogStages.push({ stageName, employeeId, timeMinutes });
+  document.getElementById('wl-stage-time').value = '';
+  renderWorkLogStages();
+}
+
+function removeWorkLogStage(idx) {
+  currentWorkLogStages.splice(idx, 1);
+  renderWorkLogStages();
+}
+
+function renderWorkLogStages() {
+  const el = document.getElementById('wl-stage-table');
+  if (currentWorkLogStages.length === 0) {
+    el.innerHTML = '<div class="empty">담긴 공정이 없습니다.</div>';
+    return;
+  }
+  let totalMin = 0;
+  const rows = currentWorkLogStages.map((s, idx) => {
+    const emp = employees.find(e => e.id === s.employeeId);
+    totalMin += s.timeMinutes;
+    return `
+      <div class="mini-row">
+        <span>${escapeHtml(s.stageName)} — ${emp ? escapeHtml(emp.name) : '(삭제된 직원)'} (${s.timeMinutes}분)</span>
+        <span><button class="link danger" onclick="removeWorkLogStage(${idx})">삭제</button></span>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = rows + `<div class="mini-row"><span>총 소요시간</span><span>${totalMin}분</span></div>`;
+}
+
+function submitWorkLog() {
+  const date = document.getElementById('wl-date').value;
+  const recipeId = document.getElementById('wl-recipe').value;
+  const batches = parseFloat(document.getElementById('wl-batches').value);
+  const loss = parseFloat(document.getElementById('wl-loss').value) || 0;
+  const note = document.getElementById('wl-note').value.trim();
+  const recipe = recipes.find(r => r.id === recipeId);
+
+  if (!date) { toast('날짜를 입력해주세요.'); return; }
+  if (!recipe) { toast('레시피를 선택해주세요.'); return; }
+  if (!(batches > 0)) { toast('배합 수를 올바르게 입력해주세요.'); return; }
+  if (loss < 0) { toast('로스 수량을 올바르게 입력해주세요.'); return; }
+  if (currentWorkLogStages.length === 0) { toast('공정을 최소 1개 이상 담아주세요 (반죽/굽기/컷팅포장 등).'); return; }
+
+  const stages = currentWorkLogStages.map(s => ({...s}));
+
+  if (editingWorkLogId) {
+    reverseWorkLogStock(workLogs.find(w => w.id === editingWorkLogId));
+    const w = workLogs.find(w => w.id === editingWorkLogId);
+    Object.assign(w, { date, recipeId, batches, loss, note, stages });
+    applyWorkLogStock(w);
+    toast('업무일지가 수정되었습니다.');
+  } else {
+    const w = { id: uid(), date, recipeId, batches, loss, note, stages };
+    workLogs.push(w);
+    applyWorkLogStock(w);
+    toast('업무일지가 저장되고 재고가 차감되었습니다.');
+  }
+  saveWorkLogs();
+  saveIngredients();
+  cancelWorkLogEdit();
+  renderWorkLogTable();
+  renderIngredients();
+}
+
+function applyWorkLogStock(w) {
+  const recipe = recipes.find(r => r.id === w.recipeId);
+  if (!recipe) return;
+  recipe.items.forEach(it => {
+    const ing = ingredients.find(i => i.id === it.ingredientId);
+    if (!ing) return;
+    const needed = it.amount * w.batches;
+    ing.stock = (ing.stock ?? 0) - needed;
+    stockLogs.unshift({
+      id: uid(), ingredientId: ing.id, ingredientName: ing.name, unit: ing.purchaseUnit,
+      date: w.date, type: '생산 차감', change: -needed, after: ing.stock,
+      note: `${recipe.name} ${w.batches}배합 생산`
+    });
+  });
+  if (stockLogs.length > 300) stockLogs.length = 300;
+  saveStockLogs();
+}
+
+function reverseWorkLogStock(w) {
+  if (!w) return;
+  const recipe = recipes.find(r => r.id === w.recipeId);
+  if (!recipe) return;
+  recipe.items.forEach(it => {
+    const ing = ingredients.find(i => i.id === it.ingredientId);
+    if (!ing) return;
+    const needed = it.amount * w.batches;
+    ing.stock = (ing.stock ?? 0) + needed;
+  });
+}
+
+function cancelWorkLogEdit() {
+  editingWorkLogId = null;
+  currentWorkLogStages = [];
+  document.getElementById('wl-batches').value = '';
+  document.getElementById('wl-loss').value = '';
+  document.getElementById('wl-note').value = '';
+  document.getElementById('wl-preview-hint').textContent = '';
+  document.getElementById('worklog-form-title').textContent = '업무일지 작성';
+  document.getElementById('wl-cancel-btn').style.display = 'none';
+  renderWorkLogStages();
+}
+
+function editWorkLog(id) {
+  const w = workLogs.find(w => w.id === id);
+  if (!w) return;
+  editingWorkLogId = id;
+  currentWorkLogStages = (w.stages || []).map(s => ({...s}));
+  document.getElementById('wl-date').value = w.date;
+  document.getElementById('wl-recipe').value = w.recipeId;
+  document.getElementById('wl-batches').value = w.batches;
+  document.getElementById('wl-loss').value = w.loss;
+  document.getElementById('wl-note').value = w.note || '';
+  document.getElementById('worklog-form-title').textContent = '업무일지 수정 (재고는 저장 시 재계산됩니다)';
+  document.getElementById('wl-cancel-btn').style.display = 'inline-block';
+  updateWorkLogPreview();
+  renderWorkLogStages();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteWorkLog(id) {
+  if (!confirm('이 업무일지를 삭제하시겠습니까? 차감되었던 재고는 복구됩니다.')) return;
+  const w = workLogs.find(w => w.id === id);
+  reverseWorkLogStock(w);
+  saveIngredients();
+  workLogs = workLogs.filter(w => w.id !== id);
+  saveWorkLogs();
+  renderWorkLogTable();
+  renderIngredients();
+}
+
+function workLogStageSummary(w) {
+  return (w.stages || []).map(s => {
+    const emp = employees.find(e => e.id === s.employeeId);
+    return `${escapeHtml(s.stageName)}:${emp ? escapeHtml(emp.name) : '(삭제됨)'}(${s.timeMinutes}분)`;
+  }).join(' · ');
+}
+
+function workLogTotalMinutes(w) {
+  return (w.stages || []).reduce((sum, s) => sum + s.timeMinutes, 0);
+}
+
+function renderWorkLogTable() {
+  const el = document.getElementById('worklog-table');
+  if (workLogs.length === 0) { el.innerHTML = '<div class="empty">작성된 업무일지가 없습니다.</div>'; return; }
+  const sorted = [...workLogs].sort((a, b) => b.date.localeCompare(a.date));
+  const rows = sorted.map(w => {
+    const recipe = recipes.find(r => r.id === w.recipeId);
+    const producedQty = recipe ? recipe.yieldQty * w.batches - w.loss : '-';
+    return `
+      <tr>
+        <td>${w.date}</td>
+        <td>${recipe ? escapeHtml(recipe.name) : '(삭제된 레시피)'}</td>
+        <td class="num">${w.batches}배합</td>
+        <td class="num">${producedQty}개</td>
+        <td class="num">${w.loss}개</td>
+        <td>${workLogStageSummary(w)} <span class="badge">${workLogTotalMinutes(w)}분</span></td>
+        <td class="num">
+          <button class="link" onclick="editWorkLog('${w.id}')">수정</button>
+          <button class="link danger" onclick="deleteWorkLog('${w.id}')">삭제</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>날짜</th><th>제품</th><th class="num">배합수</th><th class="num">생산량</th><th class="num">로스</th><th>공정/담당/시간</th><th class="num"></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+// 카페 출고 등록/조회는 cafe-pickup.html에서 처리합니다 (같은 localStorage의 shipments를 공유).
+// 아래 대시보드는 그 데이터를 읽어서 집계만 합니다.
+
+// ---------- Dashboard (월간 통계) ----------
+function renderDashboard() {
+  const month = document.getElementById('dash-month').value;
+  if (!month) return;
+
+  const monthWorkLogs = workLogs.filter(w => w.date.slice(0, 7) === month);
+  const monthShipments = shipments.filter(s => s.date.slice(0, 7) === month);
+
+  let materialCost = 0, laborCost = 0, lossCost = 0;
+  monthWorkLogs.forEach(w => {
+    const recipe = recipes.find(r => r.id === w.recipeId);
+    if (!recipe) return;
+    const cost = calcRecipeCost(recipe);
+    materialCost += cost.total * w.batches;
+    lossCost += cost.perUnit * w.loss;
+    (w.stages || []).forEach(s => {
+      const emp = employees.find(e => e.id === s.employeeId);
+      if (emp) laborCost += (s.timeMinutes / 60) * emp.hourlyWage;
+    });
+  });
+
+  const supplyTotal = monthShipments.reduce((sum, s) => sum + s.totalCost, 0);
+  const estimatedProfit = supplyTotal - materialCost - laborCost - lossCost;
+
+  document.getElementById('dash-summary-1').innerHTML = `
+    <div class="box"><div class="label">총 재료비</div><div class="value">${fmtWon(materialCost)}</div></div>
+    <div class="box"><div class="label">총 인건비</div><div class="value">${fmtWon(laborCost)}</div></div>
+    <div class="box"><div class="label">총 로스금액</div><div class="value">${fmtWon(lossCost)}</div></div>
+  `;
+  document.getElementById('dash-summary-2').innerHTML = `
+    <div class="box"><div class="label">카페 출고 총액</div><div class="value">${fmtWon(supplyTotal)}</div></div>
+    <div class="box"><div class="label">순수익 (추정)</div><div class="value big" style="font-size:22px">${fmtWon(estimatedProfit)}</div></div>
+  `;
+
+  const cafeEl = document.getElementById('dash-cafe-table');
+  if (monthShipments.length === 0) {
+    cafeEl.innerHTML = '<div class="empty">이번 달 출고 기록이 없습니다.</div>';
+  } else {
+    const byCafe = {};
+    monthShipments.forEach(s => {
+      byCafe[s.cafeId] = (byCafe[s.cafeId] || 0) + s.totalCost;
+    });
+    const rows = Object.entries(byCafe).map(([cafeId, amount]) => {
+      const cafe = cafes.find(c => c.id === cafeId);
+      return `<tr><td>${cafe ? escapeHtml(cafe.name) : '(삭제된 카페)'}</td><td class="num">${fmtWon(amount)}</td></tr>`;
+    }).join('');
+    cafeEl.innerHTML = `<table><thead><tr><th>카페</th><th class="num">공급액(원가 기준)</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  const empEl = document.getElementById('dash-employee-table');
+  if (monthWorkLogs.length === 0) {
+    empEl.innerHTML = '<div class="empty">이번 달 업무일지 기록이 없습니다.</div>';
+  } else {
+    const byEmp = {};
+    monthWorkLogs.forEach(w => {
+      (w.stages || []).forEach(s => {
+        if (!byEmp[s.employeeId]) byEmp[s.employeeId] = { minutes: 0, stageCounts: {}, logIds: new Set() };
+        byEmp[s.employeeId].minutes += s.timeMinutes;
+        byEmp[s.employeeId].stageCounts[s.stageName] = (byEmp[s.employeeId].stageCounts[s.stageName] || 0) + 1;
+        byEmp[s.employeeId].logIds.add(w.id);
+      });
+    });
+    const rows = Object.entries(byEmp).map(([empId, stat]) => {
+      const emp = employees.find(e => e.id === empId);
+      const stageBreakdown = Object.entries(stat.stageCounts).map(([name, cnt]) => `${escapeHtml(name)} ${cnt}회`).join(' · ');
+      return `
+        <tr>
+          <td>${emp ? escapeHtml(emp.name) : '(삭제된 직원)'}</td>
+          <td class="num">${(stat.minutes / 60).toFixed(1)}시간</td>
+          <td class="num">${stat.logIds.size}건</td>
+          <td>${stageBreakdown}</td>
+        </tr>
+      `;
+    }).join('');
+    empEl.innerHTML = `<table><thead><tr><th>직원</th><th class="num">총 작업시간</th><th class="num">참여 생산건수</th><th>공정별 참여</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ---------- init ----------
+initLockScreen();
+renderIngredients();
+populateIngredientSelect();
+renderRecipeItems();
+</script>
+</body>
+</html>
