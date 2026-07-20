@@ -147,8 +147,12 @@
         <label id="qty-label">수량 (개)</label>
         <input id="ship-qty" type="number" min="0" step="any" placeholder="예: 10" inputmode="decimal">
       </div>
+      <div class="field">
+        <label>담당자</label>
+        <input id="ship-picker" placeholder="예: 홍길동" autocomplete="off">
+      </div>
     </div>
-    <button class="primary" id="submit-btn" onclick="submitShipment()">가져가기 등록</button>
+    <button class="primary" id="submit-btn" onclick="submitShipment()">출고 등록</button>
     <button class="secondary" id="cancel-edit-btn" style="display:none; width:100%; margin-top:8px" onclick="cancelEditShipment()">수정 취소</button>
   </div>
 
@@ -270,6 +274,7 @@ async function submitShipment() {
   const date = document.getElementById('ship-date').value;
   const recipeId = document.getElementById('ship-recipe').value;
   const inputQty = parseFloat(document.getElementById('ship-qty').value);
+  const pickedUpBy = document.getElementById('ship-picker').value.trim();
   const cafe = cafes.find(c => c.id === selectedCafeId);
   const recipe = recipes.find(r => r.id === recipeId);
 
@@ -277,6 +282,7 @@ async function submitShipment() {
   if (!cafe) { toast('카페를 다시 선택해주세요.'); return; }
   if (!recipe) { toast('제품을 선택해주세요.'); return; }
   if (!(inputQty > 0)) { toast('수량을 올바르게 입력해주세요.'); return; }
+  if (!pickedUpBy) { toast('담당자를 입력해주세요.'); return; }
 
   const isPack = unitMode === 'pack' && recipe.packSize;
   const qty = isPack ? inputQty * recipe.packSize : inputQty;
@@ -290,7 +296,8 @@ async function submitShipment() {
       p_qty: qty,
       p_entered_qty: inputQty,
       p_entered_unit: enteredUnit,
-      p_date: date
+      p_date: date,
+      p_picked_up_by: pickedUpBy
     });
     if (error) { toast('수정 실패: ' + error.message); return; }
     toast('출고 내역이 수정되었습니다.');
@@ -302,10 +309,12 @@ async function submitShipment() {
       p_qty: qty,
       p_entered_qty: inputQty,
       p_entered_unit: enteredUnit,
-      p_date: date
+      p_date: date,
+      p_picked_up_by: pickedUpBy
     });
     if (error) { toast('등록 실패: ' + error.message); return; }
     document.getElementById('ship-qty').value = '';
+    document.getElementById('ship-picker').value = '';
     toast(`${cafe.name} 출고가 등록되었습니다.`);
   }
   renderHistory();
@@ -321,6 +330,7 @@ function editShipment(id) {
 
   document.getElementById('ship-date').value = s.date;
   document.getElementById('ship-recipe').value = s.recipe_id || '';
+  document.getElementById('ship-picker').value = s.picked_up_by || '';
   onRecipeChange();
 
   if (s.entered_unit) {
@@ -336,9 +346,10 @@ function editShipment(id) {
 function cancelEditShipment() {
   editingShipmentId = null;
   document.getElementById('form-title').textContent = '출고 등록';
-  document.getElementById('submit-btn').textContent = '가져가기 등록';
+  document.getElementById('submit-btn').textContent = '출고 등록';
   document.getElementById('cancel-edit-btn').style.display = 'none';
   document.getElementById('ship-qty').value = '';
+  document.getElementById('ship-picker').value = '';
 }
 
 async function deleteShipmentRow(id) {
@@ -368,13 +379,14 @@ async function renderHistory() {
       <td>${s.date}</td>
       <td>${escapeHtml(s.product_name || '(삭제된 제품)')}</td>
       <td class="num">${qtyText}</td>
+      <td>${escapeHtml(s.picked_up_by || '-')}</td>
       <td class="num">
         <button class="link edit" onclick="editShipment('${s.id}')">수정</button>
         <button class="link" onclick="deleteShipmentRow('${s.id}')">삭제</button>
       </td>
     </tr>`;
   }).join('');
-  el.innerHTML = `<table><thead><tr><th>날짜</th><th>제품</th><th class="num">수량</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table><thead><tr><th>날짜</th><th>제품</th><th class="num">수량</th><th>담당자</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 initCafeSelect();
