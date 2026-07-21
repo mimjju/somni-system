@@ -1892,15 +1892,32 @@ function editWorkLog(id) {
 }
 
 async function deleteWorkLog(id) {
-  if (!confirm('이 업무일지를 삭제하시겠습니까? 차감되었던 재고는 복구됩니다.')) return;
+  if (!confirm('이 업무일지를 삭제하시겠습니까? 차감되었던 재료 재고가 복구되고, 이 기록으로 쌓였던 완제품재고와 포인트도 함께 되돌아갑니다.')) return;
   const w = workLogs.find(w => w.id === id);
   await reverseWorkLogStock(w);
+
+  await sb.from('finished_goods_batches').delete().eq('work_log_id', id);
+  finishedGoods = finishedGoods.filter(b => b.workLogId !== id);
+
+  if (w) {
+    const uniqueEmployeeIds = [...new Set((w.stages || []).map(s => s.employeeId).filter(Boolean))];
+    for (const empId of uniqueEmployeeIds) {
+      const { error: ptErr } = await sb.rpc('add_employee_points', { p_employee_id: empId, p_amount: -POINTS_PER_STAGE });
+      if (ptErr) continue;
+      const emp = employees.find(e => e.id === empId);
+      if (emp) emp.points = Math.max(0, (emp.points || 0) - POINTS_PER_STAGE);
+    }
+  }
+
   const { error } = await sb.from('work_logs').delete().eq('id', id);
   if (error) { toast('삭제 실패: ' + error.message); return; }
   await refreshIngredientsAndLogs();
   workLogs = workLogs.filter(w => w.id !== id);
   renderWorkLogTable();
   renderIngredients();
+  renderFinishedGoods();
+  renderEmployees();
+  renderLeaderboard();
 }
 
 function workLogStageSummary(w) {
