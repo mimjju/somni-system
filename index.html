@@ -397,6 +397,13 @@
     <div class="card" id="employee-manage-card" style="display:none">
       <h2>직원 관리</h2>
       <div class="hint">인건비 계산에 사용됩니다 (배합 소요시간 × 시급). 시급은 관리자 모드에서만 보입니다.</div>
+      <div class="field-row">
+        <div class="field">
+          <label>캐릭터 선택</label>
+          <div id="emp-avatar-picker" style="display:flex; gap:6px; flex-wrap:wrap"></div>
+          <input type="hidden" id="emp-avatar" value="🐣">
+        </div>
+      </div>
       <div class="field-row" style="align-items:flex-end">
         <div class="field">
           <label>직원 이름</label>
@@ -411,6 +418,12 @@
         </div>
       </div>
       <div id="employee-table"></div>
+    </div>
+
+    <div class="card">
+      <h2>직원 랭킹 🏆</h2>
+      <div class="hint">업무일지에 공정을 기록할 때마다 포인트가 쌓여요!</div>
+      <div id="employee-leaderboard"></div>
     </div>
 
     <div class="card">
@@ -642,7 +655,7 @@ function mapStockLog(r) {
   return { id: r.id, ingredientId: r.ingredient_id, ingredientName: r.ingredient_name, unit: r.unit, date: r.date, type: r.type, change: r.change, after: r.after, note: r.note };
 }
 function mapEmployee(r) {
-  return { id: r.id, name: r.name, hourlyWage: r.hourly_wage };
+  return { id: r.id, name: r.name, hourlyWage: r.hourly_wage, avatar: r.avatar || '🐣', points: r.points || 0 };
 }
 function mapWorkLog(r, stagesByLog) {
   return { id: r.id, date: r.date, recipeId: r.recipe_id, batches: r.batches, loss: r.loss, note: r.note, stages: (stagesByLog[r.id] || []).map(s => ({ stageName: s.stage_name, employeeId: s.employee_id, timeMinutes: s.time_minutes })) };
@@ -689,7 +702,7 @@ async function loadAllData() {
       sb.from('work_logs').select('*'),
       sb.from('work_log_stages').select('*')
     ]);
-    employees = (empRes.data || []).map(r => ({ id: r.id, name: r.name, hourlyWage: 0 }));
+    employees = (empRes.data || []).map(r => ({ id: r.id, name: r.name, hourlyWage: 0, avatar: r.avatar || '🐣', points: r.points || 0 }));
     const stagesByLog = {};
     (stageRes.data || []).forEach(s => { (stagesByLog[s.work_log_id] = stagesByLog[s.work_log_id] || []).push(s); });
     workLogs = (wlRes.data || []).map(w => mapWorkLog(w, stagesByLog));
@@ -745,6 +758,8 @@ function switchTab(tab) {
   if (tab === 'inventory') { populateStockSelect(); renderInventoryTable(); renderInventoryLog(); }
   if (tab === 'worklog') {
     renderEmployees();
+    renderLeaderboard();
+    renderAvatarPicker();
     populateWorkLogSelects();
     renderWorkLogStages();
     renderWorkLogTable();
@@ -1460,18 +1475,37 @@ function cancelPendingOrder() {
 }
 
 // ---------- Employees ----------
+const AVATAR_OPTIONS = ['🐣','🐥','🐰','🐻','🐼','🦊','🐱','🐶','🦄','🐷','🐨','🐹'];
+
+function renderAvatarPicker() {
+  const el = document.getElementById('emp-avatar-picker');
+  if (!el) return;
+  const current = document.getElementById('emp-avatar').value || AVATAR_OPTIONS[0];
+  el.innerHTML = AVATAR_OPTIONS.map(a => `
+    <button type="button" onclick="selectAvatar('${a}')" style="font-size:22px; line-height:1; border:2px solid ${a === current ? 'var(--accent)' : 'var(--border)'}; background:${a === current ? 'var(--accent-light)' : '#fff'}; border-radius:14px; padding:5px 9px; cursor:pointer;">${a}</button>
+  `).join('');
+}
+function selectAvatar(a) {
+  document.getElementById('emp-avatar').value = a;
+  renderAvatarPicker();
+}
+
 async function submitEmployee() {
   const name = document.getElementById('emp-name').value.trim();
   const wage = parseFloat(document.getElementById('emp-wage').value);
+  const avatar = document.getElementById('emp-avatar').value || AVATAR_OPTIONS[0];
   if (!name || isNaN(wage) || wage < 0) { toast('직원 이름과 시급을 올바르게 입력해주세요.'); return; }
-  const { data, error } = await sb.from('employees').insert({ name, hourly_wage: wage }).select().single();
+  const { data, error } = await sb.from('employees').insert({ name, hourly_wage: wage, avatar }).select().single();
   if (error) { toast('저장 실패: ' + error.message); return; }
   employees.push(mapEmployee(data));
   document.getElementById('emp-name').value = '';
   document.getElementById('emp-wage').value = '';
+  document.getElementById('emp-avatar').value = AVATAR_OPTIONS[0];
+  renderAvatarPicker();
   renderEmployees();
+  renderLeaderboard();
   populateWorkLogSelects();
-  toast('직원이 추가되었습니다.');
+  toast(`${avatar} ${name} 님이 추가되었습니다!`);
 }
 
 async function deleteEmployee(id) {
@@ -1482,6 +1516,7 @@ async function deleteEmployee(id) {
   if (error) { toast('삭제 실패: ' + error.message); return; }
   employees = employees.filter(e => e.id !== id);
   renderEmployees();
+  renderLeaderboard();
   populateWorkLogSelects();
 }
 
@@ -1490,12 +1525,28 @@ function renderEmployees() {
   if (employees.length === 0) { el.innerHTML = '<div class="empty">등록된 직원이 없습니다.</div>'; return; }
   const rows = employees.map(e => `
     <tr>
-      <td>${escapeHtml(e.name)}</td>
+      <td>${e.avatar || '🐣'} ${escapeHtml(e.name)}</td>
       <td class="num">${fmtWon(e.hourlyWage)} / 시간</td>
+      <td class="num">${e.points || 0}P</td>
       <td class="num"><button class="link danger" onclick="deleteEmployee('${e.id}')">삭제</button></td>
     </tr>
   `).join('');
-  el.innerHTML = `<table><thead><tr><th>이름</th><th class="num">시급</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
+  el.innerHTML = `<table><thead><tr><th>이름</th><th class="num">시급</th><th class="num">포인트</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderLeaderboard() {
+  const el = document.getElementById('employee-leaderboard');
+  if (!el) return;
+  if (employees.length === 0) { el.innerHTML = '<div class="empty">아직 등록된 직원이 없어요.</div>'; return; }
+  const medals = ['🥇', '🥈', '🥉'];
+  const sorted = [...employees].sort((a, b) => (b.points || 0) - (a.points || 0));
+  const rows = sorted.map((e, idx) => `
+    <div class="mini-row">
+      <span>${medals[idx] || '　'} ${e.avatar || '🐣'} ${escapeHtml(e.name)}</span>
+      <span class="badge">${e.points || 0}P</span>
+    </div>
+  `).join('');
+  el.innerHTML = rows;
 }
 
 // ---------- Cafes ----------
@@ -1538,7 +1589,7 @@ let currentWorkLogStages = []; // {stageName, employeeId, timeMinutes}
 function populateWorkLogSelects() {
   const empSel = document.getElementById('wl-stage-employee');
   empSel.innerHTML = employees.length
-    ? employees.map(e => `<option value="${e.id}">${escapeHtml(e.name)}</option>`).join('')
+    ? employees.map(e => `<option value="${e.id}">${e.avatar || '🐣'} ${escapeHtml(e.name)}</option>`).join('')
     : '<option value="">등록된 직원이 없습니다</option>';
 
   const recSel = document.getElementById('wl-recipe');
@@ -1601,7 +1652,7 @@ function renderWorkLogStages() {
     totalMin += s.timeMinutes;
     return `
       <div class="mini-row">
-        <span>${escapeHtml(s.stageName)} — ${emp ? escapeHtml(emp.name) : '(삭제된 직원)'} (${s.timeMinutes}분)</span>
+        <span>${escapeHtml(s.stageName)} — ${emp ? `${emp.avatar || '🐣'} ${escapeHtml(emp.name)}` : '(삭제된 직원)'} (${s.timeMinutes}분)</span>
         <span><button class="link danger" onclick="removeWorkLogStage(${idx})">삭제</button></span>
       </div>
     `;
@@ -1655,12 +1706,36 @@ async function submitWorkLog() {
     const w = { id: data.id, date, recipeId, batches, loss, note, stages };
     workLogs.push(w);
     await applyWorkLogStock(w);
-    toast('업무일지가 저장되고 재고가 차감되었습니다.');
+    await awardWorkLogPoints(stages);
+    toast('업무일지가 저장되고 재고가 차감되었습니다! ✨');
   }
   await refreshIngredientsAndLogs();
   cancelWorkLogEdit();
   renderWorkLogTable();
   renderIngredients();
+  renderEmployees();
+  renderLeaderboard();
+  populateWorkLogSelects();
+}
+
+const POINTS_PER_STAGE = 10;
+
+async function awardWorkLogPoints(stages) {
+  const uniqueEmployeeIds = [...new Set(stages.map(s => s.employeeId).filter(Boolean))];
+  for (const empId of uniqueEmployeeIds) {
+    const { error } = await sb.rpc('add_employee_points', { p_employee_id: empId, p_amount: POINTS_PER_STAGE });
+    if (error) continue;
+    const emp = employees.find(e => e.id === empId);
+    if (emp) emp.points = (emp.points || 0) + POINTS_PER_STAGE;
+  }
+  if (uniqueEmployeeIds.length > 0) {
+    const names = uniqueEmployeeIds
+      .map(id => employees.find(e => e.id === id))
+      .filter(Boolean)
+      .map(e => `${e.avatar || '🐣'} ${e.name} +${POINTS_PER_STAGE}P`)
+      .join(', ');
+    if (names) setTimeout(() => toast(`${names} 🎉`), 1700);
+  }
 }
 
 async function refreshIngredientsAndLogs() {
@@ -1735,7 +1810,7 @@ async function deleteWorkLog(id) {
 function workLogStageSummary(w) {
   return (w.stages || []).map(s => {
     const emp = employees.find(e => e.id === s.employeeId);
-    return `${escapeHtml(s.stageName)}:${emp ? escapeHtml(emp.name) : '(삭제됨)'}(${s.timeMinutes}분)`;
+    return `${escapeHtml(s.stageName)}:${emp ? `${emp.avatar || '🐣'} ${escapeHtml(emp.name)}` : '(삭제됨)'}(${s.timeMinutes}분)`;
   }).join(' · ');
 }
 
@@ -1844,7 +1919,7 @@ function renderDashboard() {
       const stageBreakdown = Object.entries(stat.stageCounts).map(([name, cnt]) => `${escapeHtml(name)} ${cnt}회`).join(' · ');
       return `
         <tr>
-          <td>${emp ? escapeHtml(emp.name) : '(삭제된 직원)'}</td>
+          <td>${emp ? `${emp.avatar || '🐣'} ${escapeHtml(emp.name)}` : '(삭제된 직원)'}</td>
           <td class="num">${(stat.minutes / 60).toFixed(1)}시간</td>
           <td class="num">${stat.logIds.size}건</td>
           <td>${stageBreakdown}</td>
