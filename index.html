@@ -26,6 +26,7 @@
     --c5: #fb7185;
     --c6: #2dd4bf;
     --c7: #818cf8;
+    --c8: #fb923c;
     --shadow-sm: 0 2px 0 rgba(99,80,224,0.1), 0 4px 10px rgba(99,80,224,0.1);
     --shadow-md: 0 8px 0 rgba(99,80,224,0.14), 0 16px 32px rgba(99,80,224,0.2);
     --radius-lg: 26px;
@@ -82,12 +83,13 @@
     transform: scale(1.05);
   }
   .tab-btn:nth-child(1).active { background: var(--c1); box-shadow: 0 2px 0 #0284c7, 0 4px 10px rgba(56,189,248,0.35); }
-  .tab-btn:nth-child(2).active { background: var(--c2); box-shadow: 0 2px 0 #059669, 0 4px 10px rgba(52,211,153,0.35); }
-  .tab-btn:nth-child(3).active { background: var(--c3); box-shadow: 0 2px 0 #d97706, 0 4px 10px rgba(251,191,36,0.35); }
-  .tab-btn:nth-child(4).active { background: var(--c4); box-shadow: 0 2px 0 #7c3aed, 0 4px 10px rgba(167,139,250,0.35); }
-  .tab-btn:nth-child(5).active { background: var(--c5); box-shadow: 0 2px 0 #e11d48, 0 4px 10px rgba(251,113,133,0.35); }
-  .tab-btn:nth-child(6).active { background: var(--c6); box-shadow: 0 2px 0 #0d9488, 0 4px 10px rgba(45,212,191,0.35); }
-  .tab-btn:nth-child(7).active { background: var(--c7); box-shadow: 0 2px 0 #4338ca, 0 4px 10px rgba(129,140,248,0.35); }
+  .tab-btn:nth-child(2).active { background: var(--c4); box-shadow: 0 2px 0 #7c3aed, 0 4px 10px rgba(167,139,250,0.35); }
+  .tab-btn:nth-child(3).active { background: var(--c6); box-shadow: 0 2px 0 #0d9488, 0 4px 10px rgba(45,212,191,0.35); }
+  .tab-btn:nth-child(4).active { background: var(--c2); box-shadow: 0 2px 0 #059669, 0 4px 10px rgba(52,211,153,0.35); }
+  .tab-btn:nth-child(5).active { background: var(--c8); box-shadow: 0 2px 0 #c2410c, 0 4px 10px rgba(251,146,60,0.35); }
+  .tab-btn:nth-child(6).active { background: var(--c3); box-shadow: 0 2px 0 #d97706, 0 4px 10px rgba(251,191,36,0.35); }
+  .tab-btn:nth-child(7).active { background: var(--c5); box-shadow: 0 2px 0 #e11d48, 0 4px 10px rgba(251,113,133,0.35); }
+  .tab-btn:nth-child(8).active { background: var(--c7); box-shadow: 0 2px 0 #4338ca, 0 4px 10px rgba(129,140,248,0.35); }
 
   .panel { display: none; }
   .panel.active { display: block; animation: panelIn .35s var(--bounce); }
@@ -206,13 +208,23 @@
     transition: background .2s var(--bounce), color .15s ease, transform .15s var(--bounce);
   }
   .segmented button.active { background: var(--mint); color: #fff; box-shadow: var(--shadow-sm); transform: scale(1.04); }
+
+  @keyframes floatUp {
+    0% { transform: translate(-50%, 0) scale(0.4) rotate(0deg); opacity: 0; }
+    15% { opacity: 1; transform: translate(-50%, -10px) scale(1.15) rotate(8deg); }
+    100% { transform: translate(-50%, -160px) scale(0.85) rotate(-12deg); opacity: 0; }
+  }
+  .confetti-piece {
+    position: fixed; pointer-events: none; z-index: 9999; left: 50%; top: 60%;
+    animation: floatUp 1.1s ease-out forwards;
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div id="lock-screen">
     <div class="card" style="max-width:340px; margin:100px auto 0; text-align:center">
-      <div style="font-size:40px; margin-bottom:4px; display:inline-block; animation: bob 2.4s ease-in-out infinite">🍞</div>
+      <div style="font-size:40px; margin-bottom:4px; display:inline-block; animation: bob 2.4s ease-in-out infinite">🥄</div>
       <h2 style="margin-bottom:14px">솜리 베이킹실</h2>
       <div class="hint" id="lock-hint" style="margin:-6px 0 14px">비밀번호를 입력하세요</div>
       <input id="lock-password" type="password" placeholder="비밀번호" style="text-align:center; font-size:16px; letter-spacing:3px; margin-bottom:10px" autocomplete="off">
@@ -224,7 +236,7 @@
 
   <div id="app-content" style="display:none">
   <div class="field-row" style="align-items:center; justify-content:space-between; margin-bottom:4px">
-    <h1 style="margin:0"><span style="display:inline-block; animation: bob 2.4s ease-in-out infinite">🍞</span> 솜리 베이킹실 통합 관리 시스템</h1>
+    <h1 style="margin:0"><span style="display:inline-block; animation: bob 2.4s ease-in-out infinite">🥄</span> 솜리 베이킹실 통합 관리 시스템</h1>
     <div class="field-row" style="gap:6px; margin-bottom:0">
       <a href="cafe-pickup.html"><button class="secondary" type="button">📦 카페 출고 페이지</button></a>
       <button class="secondary" onclick="lockApp()">🔒 잠그기</button>
@@ -234,11 +246,12 @@
 
   <div class="tabs">
     <button class="tab-btn" id="tab-ingredients-btn" data-tab="ingredients">재고관리</button>
-    <button class="tab-btn active" data-tab="inventory">재고 현황</button>
-    <button class="tab-btn" data-tab="po">발주 입고</button>
-    <button class="tab-btn" data-tab="worklog">업무일지</button>
     <button class="tab-btn" id="tab-recipeform-btn" data-tab="recipe-form" style="display:none">레시피등록</button>
     <button class="tab-btn" id="tab-recipelist-btn" data-tab="recipe-list" style="display:none">제품 원가</button>
+    <button class="tab-btn active" data-tab="inventory">원재료 재고</button>
+    <button class="tab-btn" data-tab="finished-goods">완제품 재고</button>
+    <button class="tab-btn" data-tab="po">발주 입고</button>
+    <button class="tab-btn" data-tab="worklog">업무일지</button>
     <button class="tab-btn" id="tab-dashboard-btn" data-tab="dashboard" style="display:none">월간 대시보드</button>
   </div>
 
@@ -391,6 +404,15 @@
     <div class="card">
       <h2>최근 재고 변동 내역</h2>
       <div id="inventory-log"></div>
+    </div>
+  </div>
+
+  <!-- 완제품 재고 -->
+  <div class="panel" id="panel-finished-goods">
+    <div class="card">
+      <h2>완제품 재고</h2>
+      <div class="hint">업무일지에 생산을 기록하면 자동으로 쌓이고, 카페 출고를 등록하면 오래 만든 것부터 자동으로 차감돼요. (이미 등록된 출고를 나중에 수정·삭제해도 이 수량은 자동으로 다시 계산되지 않아요.)</div>
+      <div id="finished-goods-table"></div>
     </div>
   </div>
 
@@ -601,6 +623,7 @@ let employees = [];
 let cafes = [];
 let workLogs = [];
 let shipments = [];
+let finishedGoods = [];
 
 let editingIngredientId = null;
 let editingRecipeId = null;
@@ -692,16 +715,21 @@ function mapWorkLog(r, stagesByLog) {
 function mapShipment(r) {
   return { id: r.id, date: r.date, cafeId: r.cafe_id, recipeId: r.recipe_id, qty: r.qty, enteredQty: r.entered_qty, enteredUnit: r.entered_unit, unitCost: r.unit_cost, totalCost: r.total_cost };
 }
+function mapFinishedGoodsBatch(r) {
+  return { id: r.id, recipeId: r.recipe_id, productName: r.product_name, producedDate: r.produced_date, initialQty: r.initial_qty, remainingQty: r.remaining_qty, unitCost: r.unit_cost, workLogId: r.work_log_id };
+}
 
 async function loadAllData() {
-  const [ingRes, cafeRes, stockLogRes] = await Promise.all([
+  const [ingRes, cafeRes, stockLogRes, fgRes] = await Promise.all([
     sb.from('ingredients').select('*'),
     sb.from('cafes').select('*'),
-    sb.from('stock_logs').select('*').order('date', { ascending: false }).limit(300)
+    sb.from('stock_logs').select('*').order('date', { ascending: false }).limit(300),
+    sb.from('finished_goods_batches').select('*').order('produced_date', { ascending: true })
   ]);
   ingredients = (ingRes.data || []).map(mapIngredient);
   cafes = (cafeRes.data || []).map(r => ({ id: r.id, name: r.name }));
   stockLogs = (stockLogRes.data || []).map(mapStockLog);
+  finishedGoods = (fgRes.data || []).map(mapFinishedGoodsBatch);
 
   const [recRes, itemsRes] = await Promise.all([
     sb.from('recipes').select('*'),
@@ -753,6 +781,21 @@ function applyAdminVisibility() {
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+function celebrate() {
+  const emojis = ['✨', '🎉', '🧁', '⭐', '🍰', '💫'];
+  for (let i = 0; i < 12; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left = (38 + Math.random() * 24) + 'vw';
+    el.style.top = (45 + Math.random() * 15) + 'vh';
+    el.style.fontSize = (20 + Math.random() * 16) + 'px';
+    el.style.animationDelay = (Math.random() * 0.25) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 1500);
+  }
+}
+
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -785,6 +828,7 @@ function switchTab(tab) {
   if (tab === 'recipe-list') renderRecipeList();
   if (tab === 'recipe-form') populateIngredientSelect();
   if (tab === 'inventory') { populateStockSelect(); renderInventoryTable(); renderInventoryLog(); }
+  if (tab === 'finished-goods') renderFinishedGoods();
   if (tab === 'worklog') {
     renderEmployees();
     renderLeaderboard();
@@ -1319,6 +1363,28 @@ function renderInventoryLog() {
   el.innerHTML = rows;
 }
 
+function renderFinishedGoods() {
+  const el = document.getElementById('finished-goods-table');
+  const list = finishedGoods
+    .filter(b => b.remainingQty > 0.0001)
+    .sort((a, b) => a.producedDate.localeCompare(b.producedDate));
+  if (list.length === 0) { el.innerHTML = '<div class="empty">완제품 재고가 없습니다.</div>'; return; }
+  const rows = list.map(b => `
+    <tr>
+      <td>${escapeHtml(b.productName)}</td>
+      <td>${b.producedDate}</td>
+      <td class="num">${fmtQty(b.remainingQty)}개</td>
+      ${adminMode ? `<td class="num">${fmtWon(b.unitCost)}</td>` : ''}
+    </tr>
+  `).join('');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>제품명</th><th>생산일자</th><th class="num">현재 수량</th>${adminMode ? '<th class="num">개당원가</th>' : ''}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
 // ---------- 발주 입고 (order paste -> parse -> match -> bulk stock-in) ----------
 let pendingOrderRows = []; // {rawName, qty, amount, packSize, guessQty}
 
@@ -1721,6 +1787,7 @@ async function submitWorkLog() {
     const w = prev;
     Object.assign(w, { date, recipeId, batches, loss, note, stages });
     await applyWorkLogStock(w);
+    celebrate();
     toast('업무일지가 수정되었습니다.');
   } else {
     const { data, error } = await sb.from('work_logs').insert({
@@ -1735,7 +1802,19 @@ async function submitWorkLog() {
     const w = { id: data.id, date, recipeId, batches, loss, note, stages };
     workLogs.push(w);
     await applyWorkLogStock(w);
+
+    const producedQty = recipe.yieldQty * batches - loss;
+    if (producedQty > 0) {
+      const unitCost = calcRecipeCost(recipe).perUnit;
+      const { data: fgData } = await sb.from('finished_goods_batches').insert({
+        recipe_id: recipeId, product_name: recipe.name, produced_date: date,
+        initial_qty: producedQty, remaining_qty: producedQty, unit_cost: unitCost, work_log_id: data.id
+      }).select().single();
+      if (fgData) finishedGoods.push(mapFinishedGoodsBatch(fgData));
+    }
+
     await awardWorkLogPoints(stages);
+    celebrate();
     toast('업무일지가 저장되고 재고가 차감되었습니다! ✨');
   }
   await refreshIngredientsAndLogs();
@@ -1744,6 +1823,7 @@ async function submitWorkLog() {
   renderIngredients();
   renderEmployees();
   renderLeaderboard();
+  renderFinishedGoods();
   populateWorkLogSelects();
 }
 
