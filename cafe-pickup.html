@@ -7,37 +7,33 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
-    --bg: #f5f3ff;
+    --bg: #FDF8F3;
     --card: #ffffff;
-    --border: #e3ddff;
-    --text: #4a3c6b;
-    --sub: #9a8fc2;
-    --accent: #7c6cf6;
-    --accent-dark: #6350e0;
-    --accent-light: #ece7ff;
-    --danger: #ff6b6b;
-    --good-bg: #eafaf0;
-    --mint: #34d399;
-    --c1: #38bdf8;
-    --c2: #34d399;
-    --c3: #fbbf24;
-    --c4: #a78bfa;
-    --c5: #fb7185;
-    --shadow-sm: 0 2px 0 rgba(99,80,224,0.1), 0 4px 10px rgba(99,80,224,0.1);
-    --shadow-md: 0 8px 0 rgba(99,80,224,0.14), 0 16px 32px rgba(99,80,224,0.2);
-    --radius-lg: 26px;
-    --radius-sm: 14px;
+    --border: #EAE0D5;
+    --text: #4A3626;
+    --sub: #A08D7C;
+    --accent: #B08968;
+    --accent-dark: #8B6B4A;
+    --accent-light: #F3E7DA;
+    --danger: #B5615F;
+    --good-bg: #EAF0E3;
+    --mint: #8CA88A;
+    --c1: #C9A47E;
+    --c2: #8CA88A;
+    --c3: #D9B872;
+    --c4: #B08968;
+    --c5: #C98F7A;
+    --shadow-sm: 0 2px 8px rgba(176,137,104,0.15);
+    --shadow-md: 0 8px 24px rgba(176,137,104,0.18);
+    --radius-lg: 28px;
+    --radius-sm: 16px;
     --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, "Pretendard", "Malgun Gothic", "Segoe UI", sans-serif;
-    background:
-      radial-gradient(650px 300px at 4% -8%, rgba(56,189,248,0.16) 0%, rgba(56,189,248,0) 60%),
-      radial-gradient(650px 300px at 96% -8%, rgba(251,191,36,0.16) 0%, rgba(251,191,36,0) 60%),
-      radial-gradient(650px 300px at 50% 100%, rgba(52,211,153,0.12) 0%, rgba(52,211,153,0) 60%),
-      var(--bg);
+    background: var(--bg);
     color: var(--text);
     padding: 28px 16px 70px;
     -webkit-font-smoothing: antialiased;
@@ -62,7 +58,7 @@
   }
   .card::before {
     content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
-    background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3), var(--c4), var(--c5));
+    background: linear-gradient(90deg, var(--accent-light), var(--accent), var(--accent-dark));
   }
   .card h2 { font-size: 15.5px; margin: 0 0 14px; font-weight: 800; letter-spacing: -0.01em; }
   .card h2::before { content: "✦ "; color: var(--accent); }
@@ -75,7 +71,7 @@
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 15px;
-    background: #fffafc;
+    background: #fff;
     color: var(--text);
     width: 100%;
     transition: border-color .15s ease, box-shadow .2s var(--bounce), transform .15s var(--bounce);
@@ -89,14 +85,14 @@
 
   button { font-family: inherit; }
   button.primary {
-    background: linear-gradient(135deg, #9d8cff, var(--accent)); color: #fff; border: none;
+    background: linear-gradient(135deg, #C9A47E, var(--accent)); color: #fff; border: none;
     padding: 14px 18px; border-radius: 999px; font-size: 15.5px; cursor: pointer; font-weight: 800;
     width: 100%;
-    box-shadow: 0 4px 0 var(--accent-dark), 0 6px 14px rgba(99,80,224,0.35);
+    box-shadow: 0 4px 14px rgba(176,137,104,0.35);
     transition: transform .15s var(--bounce), box-shadow .15s var(--bounce);
   }
-  button.primary:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 6px 0 var(--accent-dark), 0 10px 18px rgba(99,80,224,0.4); }
-  button.primary:active { transform: translateY(3px) scale(0.98); box-shadow: 0 1px 0 var(--accent-dark), 0 2px 6px rgba(99,80,224,0.3); }
+  button.primary:hover { transform: translateY(-2px) scale(1.01); box-shadow: 0 6px 18px rgba(176,137,104,0.4); }
+  button.primary:active { transform: translateY(3px) scale(0.98); box-shadow: 0 2px 8px rgba(176,137,104,0.3); }
   button.secondary {
     background: #fff; border: 2px solid var(--border); padding: 11px 16px;
     border-radius: 999px; font-size: 14px; cursor: pointer; color: var(--sub); font-weight: 700;
@@ -111,7 +107,7 @@
   .segmented { display: flex; gap: 6px; margin-bottom: 14px; background: var(--good-bg); padding: 5px; border-radius: 999px; }
   .segmented button {
     flex: 1; padding: 9px; border: none; background: none;
-    border-radius: 999px; font-size: 13px; cursor: pointer; color: #3fae74; font-weight: 700;
+    border-radius: 999px; font-size: 13px; cursor: pointer; color: #5B7A55; font-weight: 700;
     transition: background .2s var(--bounce), color .15s ease, transform .15s var(--bounce);
   }
   .segmented button.active { background: var(--mint); color: #fff; box-shadow: var(--shadow-sm); transform: scale(1.04); }
@@ -130,7 +126,7 @@
 
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px) scale(0.9);
-    background: linear-gradient(135deg, #4a3c6b, #6350e0); color: #fff; padding: 12px 22px; border-radius: 999px;
+    background: linear-gradient(135deg, #6B4E36, var(--accent-dark)); color: #fff; padding: 12px 22px; border-radius: 999px;
     font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none;
     box-shadow: var(--shadow-md);
     transition: opacity .3s var(--bounce), transform .3s var(--bounce);
