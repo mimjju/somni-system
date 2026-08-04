@@ -1466,14 +1466,59 @@ function renderFinishedGoods() {
       <td>${b.producedDate}</td>
       <td class="num">${fmtQty(b.remainingQty)}개</td>
       ${adminMode ? `<td class="num">${fmtWon(b.unitCost)}</td>` : ''}
+      <td class="num">
+        <button class="link" onclick="editFinishedGoodsBatch('${b.id}')">수정</button>
+        <button class="link danger" onclick="deleteFinishedGoodsBatch('${b.id}')">삭제</button>
+      </td>
     </tr>
   `).join('');
   el.innerHTML = `
     <table>
-      <thead><tr><th>제품명</th><th>생산일자</th><th class="num">현재 수량</th>${adminMode ? '<th class="num">개당원가</th>' : ''}</tr></thead>
+      <thead><tr><th>제품명</th><th>생산일자</th><th class="num">현재 수량</th>${adminMode ? '<th class="num">개당원가</th>' : ''}<th class="num"></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
+}
+
+async function editFinishedGoodsBatch(id) {
+  const b = finishedGoods.find(x => x.id === id);
+  if (!b) return;
+
+  const dateInput = prompt('생산일자를 입력하세요 (예: 2026-08-04)', b.producedDate);
+  if (dateInput === null) return;
+  const newDate = dateInput.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) { toast('날짜 형식이 올바르지 않아요 (예: 2026-08-04).'); return; }
+
+  const qtyInput = prompt('현재 수량을 입력하세요', fmtQty(b.remainingQty));
+  if (qtyInput === null) return;
+  const newQty = parseFloat(qtyInput);
+  if (isNaN(newQty) || newQty < 0) { toast('수량을 올바르게 입력해주세요.'); return; }
+
+  let newCost = b.unitCost;
+  if (adminMode) {
+    const costInput = prompt('개당 원가(원)를 입력하세요', Math.round(b.unitCost * 100) / 100);
+    if (costInput === null) return;
+    newCost = parseFloat(costInput);
+    if (isNaN(newCost) || newCost < 0) { toast('원가를 올바르게 입력해주세요.'); return; }
+  }
+
+  const { error } = await sb.from('finished_goods_batches').update({
+    produced_date: newDate, remaining_qty: newQty, unit_cost: newCost
+  }).eq('id', id);
+  if (error) { toast('수정 실패: ' + error.message); return; }
+
+  Object.assign(b, { producedDate: newDate, remainingQty: newQty, unitCost: newCost });
+  toast('완제품재고가 수정되었습니다.');
+  renderFinishedGoods();
+}
+
+async function deleteFinishedGoodsBatch(id) {
+  if (!confirm('이 완제품재고 항목을 삭제하시겠습니까?')) return;
+  const { error } = await sb.from('finished_goods_batches').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return; }
+  finishedGoods = finishedGoods.filter(b => b.id !== id);
+  toast('삭제되었습니다.');
+  renderFinishedGoods();
 }
 
 // ---------- 발주 입고 (order paste -> parse -> match -> bulk stock-in) ----------
