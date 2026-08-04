@@ -432,6 +432,7 @@
       <div class="hint">
         마켓봄·천년스마트발주 등에서 주문한 발주서를 캡처해서 올리면 사진 속 글자를 자동으로 읽어와요.<br>
         읽어온 내용은 아래 상자에 채워지는데, 사진 인식이 완벽하지 않을 수 있으니 <code>상품명 | 수량 | 금액</code> 형식에 맞게 한 번 확인·수정한 뒤 "파싱하기"를 눌러주세요.<br>
+        매칭 단계에서는 이미 등록된 원재료로만 연결돼요 (새 재료를 자동으로 만들지 않아요) — 매칭되는 재료가 없으면 자동으로 "건너뛰기"로 남아요.<br>
         (직접 타이핑해서 붙여넣어도 돼요.)
       </div>
       <div class="field-row">
@@ -1675,43 +1676,24 @@ function renderPoMatchTable() {
   el.innerHTML = pendingOrderRows.map((row, idx) => {
     const match = findIngredientMatch(row.rawName);
     const options = [
-      `<option value="skip">건너뛰기</option>`,
-      `<option value="new" ${!match ? 'selected' : ''}>새 재료로 등록</option>`,
+      `<option value="skip" ${!match ? 'selected' : ''}>건너뛰기</option>`,
       ...ingredients.map(i => `<option value="${i.id}" ${match && match.id === i.id ? 'selected' : ''}>${escapeHtml(i.name)}</option>`)
     ].join('');
-    const isNew = !match;
-    const unitHint = '(개 기준)';
-    const purchQtyDefault = row.packSize ? row.packSize.value : (row.qty ?? '');
-    const purchPriceDefault = (row.qty && row.amount) ? Math.round(row.amount / row.qty) : (row.amount ?? '');
     return `
       <div class="card" style="padding:12px; margin-bottom:10px; background:var(--bg)">
         <div class="field-row" style="margin-bottom:8px">
           <div class="field" style="min-width:220px">
-            <label>원본 상품명</label>
+            <label>원본 상품명 (사진에서 읽은 글자)</label>
             <div style="padding:8px 0; font-size:13.5px">${escapeHtml(row.rawName)}</div>
           </div>
           <div class="field">
-            <label>재료 매칭</label>
+            <label>등록된 재료 중 매칭 (없으면 건너뛰기)</label>
             <select id="po-match-${idx}" onchange="onPoMatchChange(${idx})">${options}</select>
-          </div>
-        </div>
-        <div class="field-row" id="po-new-fields-${idx}" style="display:${isNew ? 'flex' : 'none'}">
-          <div class="field">
-            <label>구매단위 (레시피에서 쓸 단위, 예: g, ml, 개)</label>
-            <input id="po-unit-${idx}" placeholder="${row.packSize ? row.packSize.unit : '개'}">
-          </div>
-          <div class="field">
-            <label>구매수량 (그 단위 기준)</label>
-            <input id="po-purchqty-${idx}" type="number" step="any" value="${purchQtyDefault}">
-          </div>
-          <div class="field">
-            <label>구매가격 (원)</label>
-            <input id="po-purchprice-${idx}" type="number" step="any" value="${purchPriceDefault}">
           </div>
         </div>
         <div class="field-row">
           <div class="field">
-            <label>입고(재고 증가) 수량 <span id="po-unit-hint-${idx}" style="color:var(--sub)">${unitHint}</span></label>
+            <label>입고(재고 증가) 수량 <span id="po-unit-hint-${idx}" style="color:var(--sub)">${match ? '(개 기준)' : ''}</span></label>
             <input id="po-stockqty-${idx}" type="number" step="any" value="${row.guessQty ?? ''}">
           </div>
           <div class="field">
@@ -1727,8 +1709,6 @@ function renderPoMatchTable() {
 function onPoMatchChange(idx) {
   const sel = document.getElementById(`po-match-${idx}`);
   const mode = sel.value;
-  const isNew = mode === 'new';
-  document.getElementById(`po-new-fields-${idx}`).style.display = isNew ? 'flex' : 'none';
   const hint = document.getElementById(`po-unit-hint-${idx}`);
   hint.textContent = mode === 'skip' ? '' : '(개 기준)';
 }
@@ -1736,7 +1716,6 @@ function onPoMatchChange(idx) {
 async function applyBulkStockIn() {
   let count = 0;
   for (let idx = 0; idx < pendingOrderRows.length; idx++) {
-    const row = pendingOrderRows[idx];
     const sel = document.getElementById(`po-match-${idx}`);
     if (!sel) continue;
     const mode = sel.value;
@@ -1746,20 +1725,7 @@ async function applyBulkStockIn() {
     const note = document.getElementById(`po-note-${idx}`).value.trim();
     if (isNaN(stockQty) || stockQty <= 0) continue;
 
-    let ing;
-    if (mode === 'new') {
-      const unit = document.getElementById(`po-unit-${idx}`).value.trim() || '개';
-      const purchQty = parseFloat(document.getElementById(`po-purchqty-${idx}`).value) || stockQty;
-      const purchPrice = parseFloat(document.getElementById(`po-purchprice-${idx}`).value) || 0;
-      const { data, error } = await sb.from('ingredients').insert({
-        name: row.rawName, purchase_qty: purchQty, purchase_unit: unit, purchase_price: purchPrice, stock: 0, min_stock: null
-      }).select().single();
-      if (error) continue;
-      ing = mapIngredient(data);
-      ingredients.push(ing);
-    } else {
-      ing = ingredients.find(i => i.id === mode);
-    }
+    const ing = ingredients.find(i => i.id === mode);
     if (!ing) continue;
 
     const before = ing.stock ?? 0;
