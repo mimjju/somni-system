@@ -1025,7 +1025,9 @@ function renderIngredients() {
       <td class="num">${ing.purchaseQty} ${escapeHtml(ing.purchaseUnit)}</td>
       <td class="num">${fmtWon(ing.purchasePrice)}</td>
       <td class="num">${fmtWon(unitPrice(ing))} / ${escapeHtml(ing.purchaseUnit)}</td>
-      <td class="num">${fmtQty(stock)}개 ${isLow ? '<span class="badge low">부족</span>' : ''}</td>
+      <td class="num" id="stock-cell-${ing.id}">
+        <span onclick="toggleStockInlineEdit('${ing.id}')" style="cursor:pointer; border-bottom:1.5px dashed var(--sub)" title="클릭해서 재고 수정">${fmtQty(stock)}개</span> ${isLow ? '<span class="badge low">부족</span>' : ''}
+      </td>
       <td class="num">
         <button class="link" onclick="editIngredient('${ing.id}')">수정</button>
         <button class="link" onclick="convertIngredientUnit('${ing.id}')">단위변환</button>
@@ -1041,6 +1043,52 @@ function renderIngredients() {
     </table>
   `;
   renderLowStockAlerts();
+}
+
+function toggleStockInlineEdit(id) {
+  const ing = ingredients.find(i => i.id === id);
+  const cell = document.getElementById('stock-cell-' + id);
+  if (!ing || !cell) return;
+  cell.innerHTML = `
+    <input type="number" id="stock-inline-input-${id}" value="${fmtQty(ing.stock ?? 0)}" min="0" step="any"
+      style="width:70px; padding:5px 8px; font-size:13px; display:inline-block">
+    <button class="link" onclick="saveInlineStock('${id}')">저장</button>
+    <button class="link" onclick="renderIngredients()">취소</button>
+  `;
+  const input = document.getElementById('stock-inline-input-' + id);
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveInlineStock(id);
+    if (e.key === 'Escape') renderIngredients();
+  });
+}
+
+async function saveInlineStock(id) {
+  const ing = ingredients.find(i => i.id === id);
+  const input = document.getElementById('stock-inline-input-' + id);
+  if (!ing || !input) return;
+  const newStock = parseFloat(input.value);
+  if (isNaN(newStock) || newStock < 0) { toast('재고량을 올바르게 입력해주세요.'); return; }
+
+  const before = ing.stock ?? 0;
+  const change = newStock - before;
+  const { error } = await sb.from('ingredients').update({ stock: newStock }).eq('id', id);
+  if (error) { toast('수정 실패: ' + error.message); return; }
+  ing.stock = newStock;
+
+  if (change !== 0) {
+    const { data: logData } = await sb.from('stock_logs').insert({
+      ingredient_id: id, ingredient_name: ing.name, unit: '개',
+      date: todayStr(), type: '재고 수정', change, after: newStock, note: '재료 목록에서 직접 수정'
+    }).select().single();
+    if (logData) stockLogs.unshift(mapStockLog(logData));
+  }
+
+  toast('재고가 수정되었습니다.');
+  renderIngredients();
+  renderInventoryTable();
+  renderInventoryLog();
 }
 
 function renderLowStockAlerts() {
