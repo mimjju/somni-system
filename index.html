@@ -43,9 +43,9 @@
     padding: 28px 18px 70px;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1160px; margin: 0 auto; }
-  h1 { font-size: 25px; margin: 0; letter-spacing: -0.01em; font-weight: 900; }
-  .subtitle { color: var(--sub); font-size: 12.5px; margin: 6px 0 22px; letter-spacing: 0.01em; font-weight: 600; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  h1 { font-size: 28.5px; margin: 0; letter-spacing: -0.01em; font-weight: 900; }
+  .subtitle { color: var(--sub); font-size: 14.5px; margin: 6px 0 22px; letter-spacing: 0.01em; font-weight: 600; }
 
   @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
 
@@ -63,7 +63,7 @@
     background: none;
     border: none;
     border-radius: 999px;
-    font-size: 13.5px;
+    font-size: 15.5px;
     color: var(--accent-dark);
     cursor: pointer;
     white-space: nowrap;
@@ -98,18 +98,18 @@
     background: linear-gradient(90deg, var(--accent-light), var(--accent), var(--accent-dark));
     background-size: 200% 100%;
   }
-  .card h2 { font-size: 15.5px; margin: 0 0 14px; font-weight: 800; letter-spacing: -0.01em; }
+  .card h2 { font-size: 17.5px; margin: 0 0 14px; font-weight: 800; letter-spacing: -0.01em; }
   .card h2::before { content: "✦ "; color: var(--accent); }
-  .card .hint { font-size: 12px; color: var(--sub); margin: -8px 0 14px; line-height: 1.6; font-weight: 600; }
+  .card .hint { font-size: 13.5px; color: var(--sub); margin: -8px 0 14px; line-height: 1.6; font-weight: 600; }
 
   .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .field { flex: 1; min-width: 110px; display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-size: 12px; color: var(--sub); font-weight: 700; }
+  .field label { font-size: 13.5px; color: var(--sub); font-weight: 700; }
   input, select, textarea {
     padding: 10px 13px;
     border: 2px solid var(--border);
     border-radius: var(--radius-sm);
-    font-size: 14px;
+    font-size: 16px;
     background: #fff;
     color: var(--text);
     width: 100%;
@@ -125,7 +125,7 @@
   button { font-family: inherit; }
   button.primary {
     background: linear-gradient(135deg, #C9A47E, var(--accent)); color: #fff; border: none;
-    padding: 11px 22px; border-radius: 999px; font-size: 14px; cursor: pointer; font-weight: 800;
+    padding: 11px 22px; border-radius: 999px; font-size: 16px; cursor: pointer; font-weight: 800;
     box-shadow: 0 4px 14px rgba(176,137,104,0.35);
     transition: transform .15s var(--bounce), box-shadow .15s var(--bounce), background .15s ease;
   }
@@ -133,28 +133,28 @@
   button.primary:active { transform: translateY(2px) scale(0.98); box-shadow: 0 2px 8px rgba(176,137,104,0.3); }
   button.secondary {
     background: #fff; border: 2px solid var(--border); padding: 9px 18px;
-    border-radius: 999px; font-size: 13px; cursor: pointer; color: var(--sub); font-weight: 700;
+    border-radius: 999px; font-size: 15px; cursor: pointer; color: var(--sub); font-weight: 700;
     transition: border-color .15s ease, color .15s ease, transform .15s var(--bounce);
   }
   button.secondary:hover { border-color: var(--accent); color: var(--accent-dark); transform: translateY(-2px) scale(1.03); }
   button.secondary:active { transform: translateY(1px) scale(0.98); }
-  button.link { background: none; border: none; color: var(--accent-dark); cursor: pointer; font-size: 13px; padding: 5px 9px; font-weight: 700; border-radius: 999px; transition: background .15s ease, transform .15s var(--bounce); }
+  button.link { background: none; border: none; color: var(--accent-dark); cursor: pointer; font-size: 15px; padding: 5px 9px; font-weight: 700; border-radius: 999px; transition: background .15s ease, transform .15s var(--bounce); }
   button.link:hover { background: var(--accent-light); transform: scale(1.05); }
   button.link.danger { color: var(--danger); }
   button.link.danger:hover { background: var(--danger-bg); }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table { width: 100%; border-collapse: collapse; font-size: 15.5px; }
   th, td { text-align: left; padding: 10px 8px; border-bottom: 2px dashed var(--border); }
-  th { color: var(--accent-dark); font-weight: 800; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  th { color: var(--accent-dark); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
   td.num, th.num { text-align: right; }
   tr:last-child td { border-bottom: none; }
   tbody tr { transition: background .15s ease, transform .15s var(--bounce); }
   tbody tr:hover { background: var(--good-bg); }
 
-  .empty { color: var(--sub); font-size: 13px; padding: 20px 4px; text-align: center; font-weight: 600; }
+  .empty { color: var(--sub); font-size: 15px; padding: 20px 4px; text-align: center; font-weight: 600; }
   .empty::before { content: "🍪 "; }
 
-  .mini-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 6px; border-bottom: 2px dashed var(--border); font-size: 13.5px; border-radius: 10px; transition: background .15s ease; }
+  .mini-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 6px; border-bottom: 2px dashed var(--border); font-size: 15.5px; border-radius: 10px; transition: background .15s ease; }
   .mini-row:hover { background: var(--good-bg); }
   .mini-row:last-child { border-bottom: none; }
 
@@ -166,23 +166,23 @@
   .totals .box:nth-child(3) { background: #F5E6E1; border-color: #E6C6BE; }
   .totals .box:nth-child(4) { background: #EFE7DD; border-color: #D9CBB8; }
   .totals .box:nth-child(5) { background: #EAF0E3; border-color: #CFE0C2; }
-  .totals .label { font-size: 11.5px; color: #8A7660; font-weight: 800; }
-  .totals .value { font-size: 21px; font-weight: 900; color: var(--accent-dark); letter-spacing: -0.01em; }
+  .totals .label { font-size: 13px; color: #8A7660; font-weight: 800; }
+  .totals .value { font-size: 24px; font-weight: 900; color: var(--accent-dark); letter-spacing: -0.01em; }
 
-  .recipe-card .value.big { font-size: 24px; }
+  .recipe-card .value.big { font-size: 27.5px; }
   .recipe-detail { margin-top: 10px; display: none; }
   .recipe-detail.open { display: block; animation: panelIn .25s var(--bounce); }
 
-  .badge { display: inline-block; font-size: 11px; padding: 4px 11px; border-radius: 999px; background: var(--accent-light); color: var(--accent-dark); margin-left: 6px; font-weight: 800; border: 1.5px solid #E4CFB5; transform: rotate(-2deg); }
+  .badge { display: inline-block; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; background: var(--accent-light); color: var(--accent-dark); margin-left: 6px; font-weight: 800; border: 1.5px solid #E4CFB5; transform: rotate(-2deg); }
   .badge.low { background: var(--danger-bg); color: var(--danger); font-weight: 800; border-color: #E0B3AF; animation: wiggle 1.2s ease infinite; }
   .badge.points { background: linear-gradient(135deg, #fff3c4, #ffd66b); color: #92640a; border-color: #ffcb4d; transform: rotate(2deg); }
   @keyframes wiggle { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
-  .warn { color: var(--danger); font-size: 12px; font-weight: 700; }
+  .warn { color: var(--danger); font-size: 13.5px; font-weight: 700; }
 
   .toast {
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px) scale(0.9);
     background: linear-gradient(135deg, #6B4E36, var(--accent-dark)); color: #fff; padding: 12px 22px; border-radius: 999px;
-    font-size: 13px; font-weight: 700; opacity: 0; pointer-events: none;
+    font-size: 15px; font-weight: 700; opacity: 0; pointer-events: none;
     box-shadow: var(--shadow-md);
     transition: opacity .3s var(--bounce), transform .3s var(--bounce);
   }
@@ -191,7 +191,7 @@
   .segmented { display: flex; gap: 6px; margin-bottom: 14px; background: var(--good-bg); padding: 5px; border-radius: 999px; }
   .segmented button {
     flex: 1; padding: 9px; border: none; background: none;
-    border-radius: 999px; font-size: 13px; cursor: pointer; color: #5B7A55; font-weight: 700;
+    border-radius: 999px; font-size: 15px; cursor: pointer; color: #5B7A55; font-weight: 700;
     transition: background .2s var(--bounce), color .15s ease, transform .15s var(--bounce);
   }
   .segmented button.active { background: var(--mint); color: #fff; box-shadow: var(--shadow-sm); transform: scale(1.04); }
