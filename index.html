@@ -232,65 +232,13 @@
   <div class="subtitle">1~3단계 · 재료 · 레시피 · 원가계산 · 재고 · 업무일지 · 대시보드 (로컬 저장 · 프로토타입)</div>
 
   <div class="tabs">
-    <button class="tab-btn" id="tab-ingredients-btn" data-tab="ingredients">재고관리</button>
+    <button class="tab-btn active" data-tab="inventory">원재료 재고</button>
     <button class="tab-btn" id="tab-recipeform-btn" data-tab="recipe-form" style="display:none">레시피등록</button>
     <button class="tab-btn" id="tab-recipelist-btn" data-tab="recipe-list" style="display:none">제품 원가</button>
-    <button class="tab-btn active" data-tab="inventory">원재료 재고</button>
     <button class="tab-btn" data-tab="finished-goods">완제품 재고</button>
     <button class="tab-btn" data-tab="po">발주 입고</button>
     <button class="tab-btn" data-tab="worklog">업무일지</button>
     <button class="tab-btn" id="tab-dashboard-btn" data-tab="dashboard" style="display:none">월간 대시보드</button>
-  </div>
-
-  <!-- 재료 관리 -->
-  <div class="panel" id="panel-ingredients">
-    <div class="card">
-      <h2 id="ing-form-title">재료 등록</h2>
-      <div class="field-row">
-        <div class="field">
-          <label>재료명</label>
-          <input id="ing-name" placeholder="예: 박력분">
-        </div>
-        <div class="field">
-          <label>구매 수량</label>
-          <input id="ing-qty" type="number" min="0" step="any" placeholder="예: 1">
-        </div>
-        <div class="field">
-          <label>구매 단위</label>
-          <input id="ing-unit" placeholder="예: kg, g, ml, 개">
-        </div>
-        <div class="field">
-          <label>구매 가격 (원)</label>
-          <input id="ing-price" type="number" min="0" step="any" placeholder="예: 3500">
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
-          <label>현재 재고량 (개)</label>
-          <input id="ing-stock" type="number" min="0" step="any" placeholder="예: 5개 (비워두면 0)">
-        </div>
-        <div class="field">
-          <label>재고 부족 기준 (개, 이하일 때 알림)</label>
-          <input id="ing-min-stock" type="number" min="0" step="any" placeholder="예: 2개 (선택사항)">
-        </div>
-        <div class="field">
-          <label>거래처 (선택)</label>
-          <select id="ing-supplier"><option value="">지정 안 함</option></select>
-        </div>
-      </div>
-      <div class="field-row">
-        <button class="primary" id="ing-submit-btn" onclick="submitIngredient()">추가하기</button>
-        <button class="secondary" id="ing-cancel-btn" style="display:none" onclick="cancelIngredientEdit()">취소</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="field-row" style="align-items:center; justify-content:space-between; margin-bottom:10px">
-        <h2 style="margin:0">등록된 재료</h2>
-        <button class="secondary" onclick="bulkConvertKgToG()">kg → g 일괄 변환</button>
-      </div>
-      <div id="ingredient-table"></div>
-    </div>
   </div>
 
   <!-- 레시피 등록 -->
@@ -359,7 +307,7 @@
     <div id="recipe-list"></div>
   </div>
 
-  <!-- 재고 관리 -->
+  <!-- 원재료 재고 (재료 등록 + 재고 관리를 한 곳에) -->
   <div class="panel active" id="panel-inventory">
     <div class="card" id="low-stock-alert-card">
       <h2>⚠ 재고 부족 알림</h2>
@@ -368,7 +316,7 @@
 
     <div class="card">
       <h2>재고 입고 / 수정</h2>
-      <div class="hint">재고는 "개"(포장 단위)로 관리해요. 예: 생크림 500ml짜리를 6개 받았으면 6을 입력하세요. (재료별 용량은 "재료 관리"에서 등록한 구매수량/단위를 따라가요.)</div>
+      <div class="hint">재고는 "개"(포장 단위)로 관리해요. 예: 생크림 500ml짜리를 6개 받았으면 6을 입력하세요. (재료별 용량은 아래 "재료 등록"에서 정해요.)</div>
       <div class="segmented">
         <button id="stock-mode-in" class="active" onclick="setStockMode('in')">입고 (재고 추가)</button>
         <button id="stock-mode-set" onclick="setStockMode('set')">재고 직접 수정</button>
@@ -394,8 +342,53 @@
     </div>
 
     <div class="card">
-      <h2>재료별 현재 재고</h2>
-      <div id="inventory-table"></div>
+      <h2 id="ing-form-title">재료 등록</h2>
+      <div class="hint">새 재료를 추가하거나, 아래 목록에서 "수정"을 눌러 이름·가격·거래처 같은 상세 정보를 고칠 수 있어요. 재고 수량만 빠르게 바꾸고 싶으면 위 "재고 입고/수정"이나 아래 목록에서 숫자를 직접 클릭하세요.</div>
+      <div class="field-row">
+        <div class="field">
+          <label>재료명</label>
+          <input id="ing-name" placeholder="예: 박력분">
+        </div>
+        <div class="field">
+          <label>구매 수량</label>
+          <input id="ing-qty" type="number" min="0" step="any" placeholder="예: 1">
+        </div>
+        <div class="field">
+          <label>구매 단위</label>
+          <input id="ing-unit" placeholder="예: kg, g, ml, 개">
+        </div>
+        <div class="field">
+          <label>구매 가격 (원)</label>
+          <input id="ing-price" type="number" min="0" step="any" placeholder="예: 3500">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>현재 재고량 (개)</label>
+          <input id="ing-stock" type="number" min="0" step="any" placeholder="예: 5개 (비워두면 0)">
+        </div>
+        <div class="field">
+          <label>재고 부족 기준 (개, 이하일 때 알림)</label>
+          <input id="ing-min-stock" type="number" min="0" step="any" placeholder="예: 2개 (선택사항)">
+        </div>
+        <div class="field">
+          <label>거래처 (선택)</label>
+          <select id="ing-supplier"><option value="">지정 안 함</option></select>
+        </div>
+      </div>
+      <div class="field-row">
+        <button class="primary" id="ing-submit-btn" onclick="submitIngredient()">추가하기</button>
+        <button class="secondary" id="ing-cancel-btn" style="display:none" onclick="cancelIngredientEdit()">취소</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field-row" style="align-items:center; justify-content:space-between; margin-bottom:10px">
+        <h2 style="margin:0">등록된 재료</h2>
+        <button class="secondary" onclick="bulkConvertKgToG()">kg → g 일괄 변환</button>
+      </div>
+      <div class="hint">"현재 재고" 숫자를 클릭하면 그 자리에서 바로 수정할 수 있어요.</div>
+      <div id="ingredient-table"></div>
     </div>
 
     <div class="card">
@@ -896,7 +889,7 @@ function switchTab(tab) {
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'recipe-list') renderRecipeList();
   if (tab === 'recipe-form') populateIngredientSelect();
-  if (tab === 'inventory') { populateStockSelect(); renderInventoryTable(); renderInventoryLog(); renderLowStockAlerts(); }
+  if (tab === 'inventory') { populateStockSelect(); renderIngredients(); renderInventoryLog(); renderLowStockAlerts(); populateSupplierSelects(); }
   if (tab === 'finished-goods') renderFinishedGoods();
   if (tab === 'po') { renderSupplierTable(); populateSupplierSelects(); }
   if (tab === 'worklog') {
@@ -985,7 +978,7 @@ function editIngredient(id) {
   document.getElementById('ing-form-title').textContent = '재료 수정';
   document.getElementById('ing-submit-btn').textContent = '수정 완료';
   document.getElementById('ing-cancel-btn').style.display = 'inline-block';
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  document.getElementById('ing-form-title').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function cancelIngredientEdit() {
@@ -1028,6 +1021,7 @@ function renderIngredients() {
       <td class="num" id="stock-cell-${ing.id}">
         <span onclick="toggleStockInlineEdit('${ing.id}')" style="cursor:pointer; border-bottom:1.5px dashed var(--sub)" title="클릭해서 재고 수정">${fmtQty(stock)}개</span> ${isLow ? '<span class="badge low">부족</span>' : ''}
       </td>
+      <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + '개' : '-'}</td>
       <td class="num">
         <button class="link" onclick="editIngredient('${ing.id}')">수정</button>
         <button class="link" onclick="convertIngredientUnit('${ing.id}')">단위변환</button>
@@ -1038,7 +1032,7 @@ function renderIngredients() {
   }).join('');
   el.innerHTML = `
     <table>
-      <thead><tr><th>재료명</th><th class="num">구매 단위/수량</th><th class="num">구매 가격</th><th class="num">단위당 단가</th><th class="num">현재 재고</th><th class="num"></th></tr></thead>
+      <thead><tr><th>재료명</th><th class="num">구매 단위/수량</th><th class="num">구매 가격</th><th class="num">단위당 단가</th><th class="num">현재 재고</th><th class="num">부족 기준</th><th class="num"></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
@@ -1087,7 +1081,6 @@ async function saveInlineStock(id) {
 
   toast('재고가 수정되었습니다.');
   renderIngredients();
-  renderInventoryTable();
   renderInventoryLog();
 }
 
@@ -1457,34 +1450,8 @@ async function submitStockChange() {
   document.getElementById('stock-note').value = '';
   toast(type + ' 처리되었습니다.');
   updateStockHint();
-  renderInventoryTable();
   renderInventoryLog();
   renderIngredients();
-}
-
-function renderInventoryTable() {
-  const el = document.getElementById('inventory-table');
-  if (ingredients.length === 0) {
-    el.innerHTML = '<div class="empty">등록된 재료가 없습니다.</div>';
-    return;
-  }
-  const rows = ingredients.map(ing => {
-    const stock = ing.stock ?? 0;
-    const isLow = ing.minStock != null && stock <= ing.minStock;
-    return `
-      <tr>
-        <td>${escapeHtml(ing.name)} ${isLow ? '<span class="badge low">부족</span>' : ''}</td>
-        <td class="num">${fmtQty(stock)}개</td>
-        <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + '개' : '-'}</td>
-      </tr>
-    `;
-  }).join('');
-  el.innerHTML = `
-    <table>
-      <thead><tr><th>재료명</th><th class="num">현재 재고</th><th class="num">부족 기준</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
 }
 
 function renderInventoryLog() {
