@@ -432,7 +432,8 @@
           <input id="supplier-memo" placeholder="예: 매주 화/금 배송">
         </div>
         <div class="field" style="max-width:100px">
-          <button class="primary" onclick="submitSupplier()">추가</button>
+          <button class="primary" id="supplier-submit-btn" onclick="submitSupplier()">추가</button>
+          <button class="secondary" id="supplier-cancel-btn" style="display:none; margin-top:6px" onclick="cancelSupplierEdit()">취소</button>
         </div>
       </div>
       <div id="supplier-table"></div>
@@ -1773,20 +1774,53 @@ function renderLeaderboard() {
 }
 
 // ---------- Suppliers (거래처) & 정식 발주서 ----------
+let editingSupplierId = null;
+
 async function submitSupplier() {
   const name = document.getElementById('supplier-name').value.trim();
   const phone = document.getElementById('supplier-phone').value.trim() || null;
   const memo = document.getElementById('supplier-memo').value.trim() || null;
   if (!name) { toast('거래처명을 입력해주세요.'); return; }
-  const { data, error } = await sb.from('suppliers').insert({ name, phone, memo }).select().single();
-  if (error) { toast('저장 실패: ' + error.message); return; }
-  suppliers.push(mapSupplier(data));
+
+  if (editingSupplierId) {
+    const { error } = await sb.from('suppliers').update({ name, phone, memo }).eq('id', editingSupplierId);
+    if (error) { toast('저장 실패: ' + error.message); return; }
+    const s = suppliers.find(x => x.id === editingSupplierId);
+    Object.assign(s, { name, phone, memo });
+    toast('거래처가 수정되었습니다.');
+    cancelSupplierEdit();
+  } else {
+    const { data, error } = await sb.from('suppliers').insert({ name, phone, memo }).select().single();
+    if (error) { toast('저장 실패: ' + error.message); return; }
+    suppliers.push(mapSupplier(data));
+    document.getElementById('supplier-name').value = '';
+    document.getElementById('supplier-phone').value = '';
+    document.getElementById('supplier-memo').value = '';
+    toast('거래처가 추가되었습니다.');
+  }
+  renderSupplierTable();
+  populateSupplierSelects();
+}
+
+function editSupplier(id) {
+  const s = suppliers.find(x => x.id === id);
+  if (!s) return;
+  editingSupplierId = id;
+  document.getElementById('supplier-name').value = s.name;
+  document.getElementById('supplier-phone').value = s.phone || '';
+  document.getElementById('supplier-memo').value = s.memo || '';
+  document.getElementById('supplier-submit-btn').textContent = '수정 완료';
+  document.getElementById('supplier-cancel-btn').style.display = 'inline-block';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelSupplierEdit() {
+  editingSupplierId = null;
   document.getElementById('supplier-name').value = '';
   document.getElementById('supplier-phone').value = '';
   document.getElementById('supplier-memo').value = '';
-  renderSupplierTable();
-  populateSupplierSelects();
-  toast('거래처가 추가되었습니다.');
+  document.getElementById('supplier-submit-btn').textContent = '추가';
+  document.getElementById('supplier-cancel-btn').style.display = 'none';
 }
 
 async function deleteSupplier(id) {
@@ -1797,6 +1831,7 @@ async function deleteSupplier(id) {
   if (error) { toast('삭제 실패: ' + error.message); return; }
   suppliers = suppliers.filter(s => s.id !== id);
   ingredients.forEach(i => { if (i.supplierId === id) i.supplierId = null; });
+  if (editingSupplierId === id) cancelSupplierEdit();
   renderSupplierTable();
   populateSupplierSelects();
 }
@@ -1813,7 +1848,10 @@ function renderSupplierTable() {
         <td>${s.phone ? escapeHtml(s.phone) : '-'}</td>
         <td>${s.memo ? escapeHtml(s.memo) : '-'}</td>
         <td class="num">${ingCount}개 재료</td>
-        <td class="num"><button class="link danger" onclick="deleteSupplier('${s.id}')">삭제</button></td>
+        <td class="num">
+          <button class="link" onclick="editSupplier('${s.id}')">수정</button>
+          <button class="link danger" onclick="deleteSupplier('${s.id}')">삭제</button>
+        </td>
       </tr>
     `;
   }).join('');
