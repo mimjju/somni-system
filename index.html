@@ -266,12 +266,12 @@
       </div>
       <div class="field-row">
         <div class="field">
-          <label>현재 재고량</label>
-          <input id="ing-stock" type="number" min="0" step="any" placeholder="예: 5 (비워두면 0)">
+          <label>현재 재고량 (개)</label>
+          <input id="ing-stock" type="number" min="0" step="any" placeholder="예: 5개 (비워두면 0)">
         </div>
         <div class="field">
-          <label>재고 부족 기준 (이하일 때 알림)</label>
-          <input id="ing-min-stock" type="number" min="0" step="any" placeholder="예: 2 (선택사항)">
+          <label>재고 부족 기준 (개, 이하일 때 알림)</label>
+          <input id="ing-min-stock" type="number" min="0" step="any" placeholder="예: 2개 (선택사항)">
         </div>
         <div class="field">
           <label>거래처 (선택)</label>
@@ -368,6 +368,7 @@
 
     <div class="card">
       <h2>재고 입고 / 수정</h2>
+      <div class="hint">재고는 "개"(포장 단위)로 관리해요. 예: 생크림 500ml짜리를 6개 받았으면 6을 입력하세요. (재료별 용량은 "재료 관리"에서 등록한 구매수량/단위를 따라가요.)</div>
       <div class="segmented">
         <button id="stock-mode-in" class="active" onclick="setStockMode('in')">입고 (재고 추가)</button>
         <button id="stock-mode-set" onclick="setStockMode('set')">재고 직접 수정</button>
@@ -378,7 +379,7 @@
           <select id="stock-ing-select"></select>
         </div>
         <div class="field" style="max-width:160px">
-          <label id="stock-amount-label">입고 수량</label>
+          <label id="stock-amount-label">입고 수량 (개)</label>
           <input id="stock-amount" type="number" min="0" step="any" placeholder="0">
         </div>
         <div class="field">
@@ -1023,7 +1024,7 @@ function renderIngredients() {
       <td class="num">${ing.purchaseQty} ${escapeHtml(ing.purchaseUnit)}</td>
       <td class="num">${fmtWon(ing.purchasePrice)}</td>
       <td class="num">${fmtWon(unitPrice(ing))} / ${escapeHtml(ing.purchaseUnit)}</td>
-      <td class="num">${fmtQty(stock)} ${escapeHtml(ing.purchaseUnit)} ${isLow ? '<span class="badge low">부족</span>' : ''}</td>
+      <td class="num">${fmtQty(stock)}개 ${isLow ? '<span class="badge low">부족</span>' : ''}</td>
       <td class="num">
         <button class="link" onclick="editIngredient('${ing.id}')">수정</button>
         <button class="link" onclick="convertIngredientUnit('${ing.id}')">단위변환</button>
@@ -1054,25 +1055,23 @@ function renderLowStockAlerts() {
   const rows = lowItems.map(ing => `
     <div class="mini-row">
       <span>${escapeHtml(ing.name)}</span>
-      <span class="badge low">현재 ${fmtQty(ing.stock ?? 0)}${escapeHtml(ing.purchaseUnit)} / 기준 ${fmtQty(ing.minStock)}${escapeHtml(ing.purchaseUnit)}</span>
+      <span class="badge low">현재 ${fmtQty(ing.stock ?? 0)}개 / 기준 ${fmtQty(ing.minStock)}개</span>
     </div>
   `).join('');
   el.innerHTML = `<div class="hint">${lowItems.length}개 재료가 부족 기준 이하예요. 발주가 필요해요.</div>` + rows;
 }
 
 async function applyUnitConversion(ing, newUnit, factor) {
+  // 재고(stock/min_stock)는 "개"(포장 수) 기준이라 용량 단위를 바꿔도 그대로 둡니다.
+  // 용량(purchase_qty)과 레시피 사용량(recipe_items.amount)만 factor만큼 환산합니다.
   const usedRecipes = recipes.filter(r => r.items.some(it => it.ingredientId === ing.id));
 
   await sb.from('ingredients').update({
     purchase_qty: ing.purchaseQty * factor,
-    stock: (ing.stock ?? 0) * factor,
-    min_stock: ing.minStock != null ? ing.minStock * factor : null,
     purchase_unit: newUnit
   }).eq('id', ing.id);
 
   ing.purchaseQty = ing.purchaseQty * factor;
-  ing.stock = (ing.stock ?? 0) * factor;
-  if (ing.minStock != null) ing.minStock = ing.minStock * factor;
   ing.purchaseUnit = newUnit;
 
   for (const r of usedRecipes) {
@@ -1101,7 +1100,7 @@ async function convertIngredientUnit(id) {
   const usedRecipeCount = recipes.filter(r => r.items.some(it => it.ingredientId === id)).length;
   const ok = confirm(
     `"${ing.name}"의 단위를 "${ing.purchaseUnit}" → "${newUnit.trim()}"로 변환합니다.\n` +
-    `구매수량·재고가 ${factor}배로 바뀌고, 이 재료를 쓰는 레시피 ${usedRecipeCount}개의 사용량도 함께 ${factor}배로 자동 변환됩니다.\n계속할까요?`
+    `구매수량(1개당 용량)이 ${factor}배로 바뀌고, 이 재료를 쓰는 레시피 ${usedRecipeCount}개의 사용량도 함께 ${factor}배로 자동 변환됩니다. (재고 개수는 그대로 유지돼요)\n계속할까요?`
   );
   if (!ok) return;
 
@@ -1118,7 +1117,7 @@ async function bulkConvertKgToG() {
 
   const names = targets.map(i => i.name).join(', ');
   const ok = confirm(
-    `다음 재료를 kg → g로 일괄 변환합니다 (구매수량·재고 ×1000, 관련 레시피 사용량도 함께 변환):\n${names}\n계속할까요?`
+    `다음 재료를 kg → g로 일괄 변환합니다 (구매수량 ×1000, 관련 레시피 사용량도 함께 변환. 재고 개수는 그대로 유지):\n${names}\n계속할까요?`
   );
   if (!ok) return;
 
@@ -1348,7 +1347,7 @@ function setStockMode(mode) {
   stockMode = mode;
   document.getElementById('stock-mode-in').classList.toggle('active', mode === 'in');
   document.getElementById('stock-mode-set').classList.toggle('active', mode === 'set');
-  document.getElementById('stock-amount-label').textContent = mode === 'in' ? '입고 수량' : '수정 후 재고량';
+  document.getElementById('stock-amount-label').textContent = mode === 'in' ? '입고 수량 (개)' : '수정 후 재고량 (개)';
   updateStockHint();
 }
 
@@ -1369,7 +1368,7 @@ function updateStockHint() {
   const sel = document.getElementById('stock-ing-select');
   const ing = ingredients.find(i => i.id === sel.value);
   document.getElementById('stock-current-hint').textContent = ing
-    ? `현재 재고: ${fmtQty(ing.stock ?? 0)} ${ing.purchaseUnit}`
+    ? `현재 재고: ${fmtQty(ing.stock ?? 0)}개 (1개 = ${fmtQty(ing.purchaseQty)}${ing.purchaseUnit})`
     : '';
 }
 
@@ -1400,7 +1399,7 @@ async function submitStockChange() {
 
   const date = new Date().toISOString().slice(0, 10);
   const { data: logData } = await sb.from('stock_logs').insert({
-    ingredient_id: ingId, ingredient_name: ing.name, unit: ing.purchaseUnit,
+    ingredient_id: ingId, ingredient_name: ing.name, unit: '개',
     date, type, change, after, note
   }).select().single();
   if (logData) stockLogs.unshift(mapStockLog(logData));
@@ -1426,8 +1425,8 @@ function renderInventoryTable() {
     return `
       <tr>
         <td>${escapeHtml(ing.name)} ${isLow ? '<span class="badge low">부족</span>' : ''}</td>
-        <td class="num">${fmtQty(stock)} ${escapeHtml(ing.purchaseUnit)}</td>
-        <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + ' ' + escapeHtml(ing.purchaseUnit) : '-'}</td>
+        <td class="num">${fmtQty(stock)}개</td>
+        <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + '개' : '-'}</td>
       </tr>
     `;
   }).join('');
@@ -1564,7 +1563,7 @@ function parsePastedOrder() {
     }
     const packSize = name ? extractPackSize(name) : null;
     const validQty = !isNaN(qty) ? qty : null;
-    const guessQty = (packSize && validQty) ? packSize.value * validQty : validQty;
+    const guessQty = validQty; // 재고는 개(포장 단위) 기준이라 수량 그대로 사용
     return {
       rawName: name || line,
       qty: validQty,
@@ -1590,7 +1589,7 @@ function renderPoMatchTable() {
       ...ingredients.map(i => `<option value="${i.id}" ${match && match.id === i.id ? 'selected' : ''}>${escapeHtml(i.name)}</option>`)
     ].join('');
     const isNew = !match;
-    const unitHint = match ? `(${escapeHtml(match.purchaseUnit)} 기준)` : '(신규 등록 단위 사용)';
+    const unitHint = '(개 기준)';
     const purchQtyDefault = row.packSize ? row.packSize.value : (row.qty ?? '');
     const purchPriceDefault = (row.qty && row.amount) ? Math.round(row.amount / row.qty) : (row.amount ?? '');
     return `
@@ -1640,14 +1639,7 @@ function onPoMatchChange(idx) {
   const isNew = mode === 'new';
   document.getElementById(`po-new-fields-${idx}`).style.display = isNew ? 'flex' : 'none';
   const hint = document.getElementById(`po-unit-hint-${idx}`);
-  if (mode === 'skip') {
-    hint.textContent = '';
-  } else if (isNew) {
-    hint.textContent = '(신규 등록 단위 사용)';
-  } else {
-    const ing = ingredients.find(i => i.id === mode);
-    hint.textContent = ing ? `(${ing.purchaseUnit} 기준)` : '';
-  }
+  hint.textContent = mode === 'skip' ? '' : '(개 기준)';
 }
 
 async function applyBulkStockIn() {
@@ -1686,7 +1678,7 @@ async function applyBulkStockIn() {
     ing.stock = after;
 
     const { data: logData } = await sb.from('stock_logs').insert({
-      ingredient_id: ing.id, ingredient_name: ing.name, unit: ing.purchaseUnit,
+      ingredient_id: ing.id, ingredient_name: ing.name, unit: '개',
       date: todayStr(), type: '발주 입고', change: stockQty, after: ing.stock, note
     }).select().single();
     if (logData) stockLogs.unshift(mapStockLog(logData));
@@ -1861,13 +1853,13 @@ function renderPoSupplierItems() {
     const isLow = ing.minStock != null && stock <= ing.minStock;
     const packSize = ing.purchaseQty > 0 ? ing.purchaseQty : 1;
     const shortfall = ing.minStock != null ? Math.max(0, ing.minStock * 2 - stock) : 0;
-    const suggestedPacks = shortfall > 0 ? Math.ceil(shortfall / packSize) : '';
+    const suggestedPacks = shortfall > 0 ? Math.ceil(shortfall) : '';
     return `
       <div class="field-row" style="align-items:center; margin-bottom:6px">
         <label style="display:flex; align-items:center; gap:8px; flex:2; min-width:180px; font-weight:600; font-size:13.5px">
           <input type="checkbox" id="po-item-check-${ing.id}" ${isLow ? 'checked' : ''} style="width:auto">
           ${escapeHtml(ing.name)} ${isLow ? '<span class="badge low">부족</span>' : ''}
-          <span style="color:var(--sub); font-weight:600; font-size:12px">(1개 = ${fmtQty(packSize)}${escapeHtml(ing.purchaseUnit)}, 현재 ${fmtQty(stock)}${escapeHtml(ing.purchaseUnit)})</span>
+          <span style="color:var(--sub); font-weight:600; font-size:12px">(1개 = ${fmtQty(packSize)}${escapeHtml(ing.purchaseUnit)}, 현재 ${fmtQty(stock)}개)</span>
         </label>
         <div class="field" style="max-width:120px; margin-bottom:0">
           <input id="po-item-qty-${ing.id}" type="number" min="0" step="1" placeholder="수량" value="${suggestedPacks === '' ? '' : suggestedPacks}">
@@ -1977,9 +1969,10 @@ function updateWorkLogPreview() {
     .map(it => {
       const ing = ingredients.find(i => i.id === it.ingredientId);
       if (!ing) return null;
-      const needed = it.amount * batches;
-      const after = (ing.stock ?? 0) - needed;
-      return after < 0 ? `${ing.name}(${fmtQty(after)}${ing.purchaseUnit})` : null;
+      const neededBase = it.amount * batches;
+      const neededPacks = ing.purchaseQty > 0 ? neededBase / ing.purchaseQty : neededBase;
+      const after = (ing.stock ?? 0) - neededPacks;
+      return after < 0 ? `${ing.name}(${fmtQty(after)}개)` : null;
     })
     .filter(Boolean);
   hint.innerHTML = `저장 시 생산량 ${fmtQty(producedQty)}개, 재료 재고가 자동 차감됩니다.` +
