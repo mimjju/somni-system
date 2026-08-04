@@ -5,34 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>솜리 베이킹실 통합 관리 시스템</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #FDF8F3;
-    --card: #ffffff;
-    --border: #EAE0D5;
-    --text: #4A3626;
-    --sub: #A08D7C;
-    --accent: #B08968;
-    --accent-dark: #8B6B4A;
-    --accent-light: #F3E7DA;
-    --danger: #B5615F;
-    --danger-bg: #F5E6E1;
-    --good-bg: #EAF0E3;
-    --mint: #8CA88A;
-    --c1: #C9A47E;
-    --c2: #8CA88A;
-    --c3: #D9B872;
-    --c4: #B08968;
-    --c5: #C98F7A;
-    --c6: #A6B98C;
-    --c7: #9C8874;
-    --c8: #C2895F;
-    --shadow-sm: 0 2px 8px rgba(176,137,104,0.15);
-    --shadow-md: 0 8px 24px rgba(176,137,104,0.18);
-    --radius-lg: 28px;
-    --radius-md: 20px;
-    --radius-sm: 16px;
-    --bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --bg: #F5F4F0;
+    --card: #FAFAF7;
+    --border: #DEE1D7;
+    --text: #33362F;
+    --sub: #8B9187;
+    --accent: #6B8A63;
+    --accent-dark: #4F6849;
+    --accent-light: #E8EDE3;
+    --danger: #A8574F;
+    --danger-bg: #F1E3DE;
+    --good-bg: #EEF1E7;
+    --mint: #7A9670;
+    --c1: #6B8A63;
+    --c2: #8B9E82;
+    --c3: #A8925A;
+    --c4: #8C7A94;
+    --c5: #A8574F;
+    --c6: #6E8C94;
+    --c7: #7A6F5E;
+    --c8: #B0855A;
+    --shadow-sm: 0 1px 3px rgba(51,54,47,0.08);
+    --shadow-md: 0 6px 18px rgba(51,54,47,0.12);
+    --radius-lg: 4px;
+    --radius-md: 3px;
+    --radius-sm: 3px;
+    --bounce: cubic-bezier(0.2, 0, 0.2, 1);
   }
   * { box-sizing: border-box; }
   body {
@@ -44,157 +45,150 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 1400px; margin: 0 auto; }
-  h1 { font-size: 28.5px; margin: 0; letter-spacing: -0.01em; font-weight: 900; }
-  .subtitle { color: var(--sub); font-size: 14.5px; margin: 6px 0 22px; letter-spacing: 0.01em; font-weight: 600; }
+  h1 { font-family: "Nanum Myeongjo", serif; font-size: 30px; margin: 0; letter-spacing: 0.01em; font-weight: 800; }
+  .subtitle { color: var(--sub); font-size: 14.5px; margin: 8px 0 26px; letter-spacing: 0.02em; font-weight: 500; }
 
   @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-4px) rotate(2deg); } }
 
   .tabs {
     display: flex;
-    gap: 5px;
-    margin-bottom: 22px;
-    padding: 6px;
+    gap: 4px;
+    margin-bottom: 26px;
+    padding: 5px;
     background: var(--accent-light);
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     flex-wrap: wrap;
   }
   .tab-btn {
     padding: 10px 16px;
     background: none;
     border: none;
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     font-size: 15.5px;
     color: var(--accent-dark);
     cursor: pointer;
     white-space: nowrap;
-    font-weight: 700;
-    transition: background .2s var(--bounce), color .2s ease, transform .15s var(--bounce), box-shadow .2s ease;
+    font-weight: 600;
+    transition: background .2s var(--bounce), color .2s ease;
   }
-  .tab-btn:hover { transform: translateY(-2px) scale(1.03); }
+  .tab-btn:hover { background: rgba(255,255,255,0.5); }
   .tab-btn.active {
     color: #fff;
     background: var(--accent);
     box-shadow: var(--shadow-sm);
-    transform: scale(1.05);
   }
 
   .panel { display: none; }
   .panel.active { display: block; animation: panelIn .35s var(--bounce); }
-  @keyframes panelIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  @keyframes panelIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
   .card {
     position: relative;
     background: var(--card);
-    border: 2px solid var(--border);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    padding: 24px 20px 20px;
-    margin-bottom: 16px;
+    padding: 28px 26px 24px;
+    margin-bottom: 20px;
     box-shadow: var(--shadow-sm);
-    transition: transform .2s var(--bounce), box-shadow .2s ease;
+    transition: box-shadow .2s ease;
     overflow: hidden;
   }
   .card::before {
-    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 6px;
-    background: linear-gradient(90deg, var(--accent-light), var(--accent), var(--accent-dark));
-    background-size: 200% 100%;
+    content: ""; position: absolute; top: 0; left: 0; bottom: 0; width: 3px;
+    background: var(--accent);
   }
-  .card h2 { font-size: 17.5px; margin: 0 0 14px; font-weight: 800; letter-spacing: -0.01em; }
-  .card h2::before { content: "✦ "; color: var(--accent); }
-  .card .hint { font-size: 13.5px; color: var(--sub); margin: -8px 0 14px; line-height: 1.6; font-weight: 600; }
+  .card h2 { font-family: "Nanum Myeongjo", serif; font-size: 19px; margin: 0 0 16px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
+  .card .hint { font-size: 13.5px; color: var(--sub); margin: -10px 0 16px; line-height: 1.7; font-weight: 500; }
 
-  .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .field { flex: 1; min-width: 110px; display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-size: 13.5px; color: var(--sub); font-weight: 700; }
+  .field-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .field { flex: 1; min-width: 110px; display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; color: var(--sub); font-weight: 600; }
   input, select, textarea {
     padding: 10px 13px;
-    border: 2px solid var(--border);
+    border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 16px;
     background: #fff;
     color: var(--text);
     width: 100%;
-    transition: border-color .15s ease, box-shadow .2s var(--bounce), transform .15s var(--bounce);
+    transition: border-color .15s ease, box-shadow .15s ease;
   }
   input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-light);
-    transform: translateY(-1px);
+    box-shadow: 0 0 0 3px var(--accent-light);
   }
 
   button { font-family: inherit; }
   button.primary {
-    background: linear-gradient(135deg, #C9A47E, var(--accent)); color: #fff; border: none;
-    padding: 11px 22px; border-radius: 999px; font-size: 16px; cursor: pointer; font-weight: 800;
-    box-shadow: 0 4px 14px rgba(176,137,104,0.35);
-    transition: transform .15s var(--bounce), box-shadow .15s var(--bounce), background .15s ease;
+    background: var(--accent); color: #fff; border: none;
+    padding: 11px 22px; border-radius: var(--radius-sm); font-size: 15.5px; cursor: pointer; font-weight: 600;
+    box-shadow: var(--shadow-sm);
+    transition: background .15s ease, box-shadow .15s ease;
   }
-  button.primary:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 6px 18px rgba(176,137,104,0.4); }
-  button.primary:active { transform: translateY(2px) scale(0.98); box-shadow: 0 2px 8px rgba(176,137,104,0.3); }
+  button.primary:hover { background: var(--accent-dark); box-shadow: var(--shadow-md); }
+  button.primary:active { background: var(--accent-dark); box-shadow: none; }
   button.secondary {
-    background: #fff; border: 2px solid var(--border); padding: 9px 18px;
-    border-radius: 999px; font-size: 15px; cursor: pointer; color: var(--sub); font-weight: 700;
-    transition: border-color .15s ease, color .15s ease, transform .15s var(--bounce);
+    background: transparent; border: 1px solid var(--border); padding: 9px 18px;
+    border-radius: var(--radius-sm); font-size: 14.5px; cursor: pointer; color: var(--sub); font-weight: 600;
+    transition: border-color .15s ease, color .15s ease;
   }
-  button.secondary:hover { border-color: var(--accent); color: var(--accent-dark); transform: translateY(-2px) scale(1.03); }
-  button.secondary:active { transform: translateY(1px) scale(0.98); }
-  button.link { background: none; border: none; color: var(--accent-dark); cursor: pointer; font-size: 15px; padding: 5px 9px; font-weight: 700; border-radius: 999px; transition: background .15s ease, transform .15s var(--bounce); }
-  button.link:hover { background: var(--accent-light); transform: scale(1.05); }
+  button.secondary:hover { border-color: var(--accent); color: var(--accent-dark); }
+  button.secondary:active { opacity: 0.8; }
+  button.link { background: none; border: none; color: var(--accent-dark); cursor: pointer; font-size: 14.5px; padding: 5px 9px; font-weight: 600; border-radius: var(--radius-sm); transition: background .15s ease; }
+  button.link:hover { background: var(--accent-light); }
   button.link.danger { color: var(--danger); }
   button.link.danger:hover { background: var(--danger-bg); }
 
-  table { width: 100%; border-collapse: collapse; font-size: 15.5px; }
-  th, td { text-align: left; padding: 10px 8px; border-bottom: 2px dashed var(--border); }
-  th { color: var(--accent-dark); font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 0.03em; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th, td { text-align: left; padding: 11px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--sub); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
   td.num, th.num { text-align: right; }
   tr:last-child td { border-bottom: none; }
-  tbody tr { transition: background .15s ease, transform .15s var(--bounce); }
+  tbody tr { transition: background .15s ease; }
   tbody tr:hover { background: var(--good-bg); }
 
-  .empty { color: var(--sub); font-size: 15px; padding: 20px 4px; text-align: center; font-weight: 600; }
-  .empty::before { content: "🍪 "; }
+  .empty { color: var(--sub); font-size: 15px; padding: 22px 4px; text-align: center; font-weight: 500; }
 
-  .mini-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 6px; border-bottom: 2px dashed var(--border); font-size: 15.5px; border-radius: 10px; transition: background .15s ease; }
+  .mini-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 6px; border-bottom: 1px solid var(--border); font-size: 15px; transition: background .15s ease; }
   .mini-row:hover { background: var(--good-bg); }
   .mini-row:last-child { border-bottom: none; }
 
-  .totals { display: flex; gap: 14px; margin-top: 14px; padding-top: 14px; border-top: 2px dashed var(--border); flex-wrap: wrap; }
-  .totals .box { flex: 1; min-width: 120px; background: var(--good-bg); border-radius: var(--radius-md); padding: 14px; border: 2px solid #CFE0C2; transition: transform .15s var(--bounce); }
-  .totals .box:hover { transform: translateY(-2px) rotate(-1deg); }
-  .totals .box:nth-child(1) { background: #F3E7DA; border-color: #E4CFB5; }
-  .totals .box:nth-child(2) { background: #FBF1DE; border-color: #EEDDB0; }
-  .totals .box:nth-child(3) { background: #F5E6E1; border-color: #E6C6BE; }
-  .totals .box:nth-child(4) { background: #EFE7DD; border-color: #D9CBB8; }
-  .totals .box:nth-child(5) { background: #EAF0E3; border-color: #CFE0C2; }
-  .totals .label { font-size: 13px; color: #8A7660; font-weight: 800; }
-  .totals .value { font-size: 24px; font-weight: 900; color: var(--accent-dark); letter-spacing: -0.01em; }
+  .totals { display: flex; gap: 14px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .totals .box { flex: 1; min-width: 120px; background: var(--good-bg); border-radius: var(--radius-md); padding: 14px; border: 1px solid var(--border); }
+  .totals .box:nth-child(1) { background: var(--accent-light); border-color: #CFDBC7; }
+  .totals .box:nth-child(2) { background: #F3ECD9; border-color: #E3D2AC; }
+  .totals .box:nth-child(3) { background: var(--danger-bg); border-color: #E0C0B5; }
+  .totals .box:nth-child(4) { background: #EFEDE7; border-color: #DCD6C8; }
+  .totals .box:nth-child(5) { background: var(--good-bg); border-color: #D3DCC7; }
+  .totals .label { font-size: 12.5px; color: var(--sub); font-weight: 700; }
+  .totals .value { font-size: 23px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
 
-  .recipe-card .value.big { font-size: 27.5px; }
+  .recipe-card .value.big { font-size: 26px; }
   .recipe-detail { margin-top: 10px; display: none; }
   .recipe-detail.open { display: block; animation: panelIn .25s var(--bounce); }
 
-  .badge { display: inline-block; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; background: var(--accent-light); color: var(--accent-dark); margin-left: 6px; font-weight: 800; border: 1.5px solid #E4CFB5; transform: rotate(-2deg); }
-  .badge.low { background: var(--danger-bg); color: var(--danger); font-weight: 800; border-color: #E0B3AF; animation: wiggle 1.2s ease infinite; }
-  .badge.points { background: linear-gradient(135deg, #fff3c4, #ffd66b); color: #92640a; border-color: #ffcb4d; transform: rotate(2deg); }
-  @keyframes wiggle { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
-  .warn { color: var(--danger); font-size: 13.5px; font-weight: 700; }
+  .badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: var(--radius-sm); background: var(--accent-light); color: var(--accent-dark); margin-left: 6px; font-weight: 700; border: 1px solid #CFDBC7; }
+  .badge.low { background: var(--danger-bg); color: var(--danger); font-weight: 700; border-color: #DEC2BB; }
+  .badge.points { background: #F3ECD9; color: #6E5A28; border-color: #E3D2AC; }
+  .warn { color: var(--danger); font-size: 13.5px; font-weight: 600; }
 
   .toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px) scale(0.9);
-    background: linear-gradient(135deg, #6B4E36, var(--accent-dark)); color: #fff; padding: 12px 22px; border-radius: 999px;
-    font-size: 15px; font-weight: 700; opacity: 0; pointer-events: none;
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: #fff; padding: 12px 22px; border-radius: var(--radius-sm);
+    font-size: 14.5px; font-weight: 600; opacity: 0; pointer-events: none;
     box-shadow: var(--shadow-md);
-    transition: opacity .3s var(--bounce), transform .3s var(--bounce);
+    transition: opacity .3s ease, transform .3s ease;
   }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  .segmented { display: flex; gap: 6px; margin-bottom: 14px; background: var(--good-bg); padding: 5px; border-radius: 999px; }
+  .segmented { display: flex; gap: 4px; margin-bottom: 14px; background: var(--good-bg); padding: 4px; border-radius: var(--radius-md); }
   .segmented button {
     flex: 1; padding: 9px; border: none; background: none;
-    border-radius: 999px; font-size: 15px; cursor: pointer; color: #5B7A55; font-weight: 700;
-    transition: background .2s var(--bounce), color .15s ease, transform .15s var(--bounce);
+    border-radius: var(--radius-sm); font-size: 14.5px; cursor: pointer; color: var(--accent-dark); font-weight: 600;
+    transition: background .2s ease, color .15s ease;
   }
-  .segmented button.active { background: var(--mint); color: #fff; box-shadow: var(--shadow-sm); transform: scale(1.04); }
+  .segmented button.active { background: var(--mint); color: #fff; box-shadow: var(--shadow-sm); }
 
   @keyframes floatUp {
     0% { transform: translate(-50%, 0) scale(0.4) rotate(0deg); opacity: 0; }
@@ -211,7 +205,7 @@
 <div class="wrap">
   <div id="lock-screen">
     <div class="card" style="max-width:340px; margin:100px auto 0; text-align:center">
-      <div style="font-size:40px; margin-bottom:4px; display:inline-block; animation: bob 2.4s ease-in-out infinite">🥄</div>
+      <div style="font-size:40px; margin-bottom:4px; display:inline-block">🥄</div>
       <h2 style="margin-bottom:14px">솜리 베이킹실</h2>
       <div class="hint" id="lock-hint" style="margin:-6px 0 14px">비밀번호를 입력하세요</div>
       <input id="lock-password" type="password" placeholder="비밀번호" style="text-align:center; font-size:16px; letter-spacing:3px; margin-bottom:10px" autocomplete="off">
@@ -223,7 +217,7 @@
 
   <div id="app-content" style="display:none">
   <div class="field-row" style="align-items:center; justify-content:space-between; margin-bottom:4px">
-    <h1 style="margin:0"><span style="display:inline-block; animation: bob 2.4s ease-in-out infinite">🥄</span> 솜리 베이킹실 통합 관리 시스템</h1>
+    <h1 style="margin:0"><span style="display:inline-block">🥄</span> 솜리 베이킹실 통합 관리 시스템</h1>
     <div class="field-row" style="gap:6px; margin-bottom:0">
       <a href="cafe-pickup.html"><button class="secondary" type="button">📦 카페 출고 페이지</button></a>
       <button class="secondary" onclick="lockApp()">🔒 잠그기</button>
@@ -1019,13 +1013,13 @@ function renderIngredients() {
       <td class="num">${fmtWon(ing.purchasePrice)}</td>
       <td class="num">${fmtWon(unitPrice(ing))} / ${escapeHtml(ing.purchaseUnit)}</td>
       <td class="num" id="stock-cell-${ing.id}">
-        <span onclick="toggleStockInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; background:var(--accent-light); color:var(--accent-dark); font-weight:800;" title="클릭해서 재고 수정">${fmtQty(stock)}개 <span style="font-size:11px">✏️</span></span> ${isLow ? '<span class="badge low">부족</span>' : ''}
+        <span onclick="toggleStockInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:3px; background:var(--accent-light); color:var(--accent-dark); font-weight:600;" title="클릭해서 재고 수정">${fmtQty(stock)}개 <span style="font-size:11px">✏️</span></span> ${isLow ? '<span class="badge low">부족</span>' : ''}
       </td>
       <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + '개' : '-'}</td>
       <td id="supplier-cell-${ing.id}">
         ${(() => {
           const s = suppliers.find(sp => sp.id === ing.supplierId);
-          return `<span onclick="toggleSupplierInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; background:var(--accent-light); color:var(--accent-dark); font-weight:800;" title="클릭해서 거래처 수정">${s ? escapeHtml(s.name) : '미지정'} <span style="font-size:11px">✏️</span></span>`;
+          return `<span onclick="toggleSupplierInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:3px; background:var(--accent-light); color:var(--accent-dark); font-weight:600;" title="클릭해서 거래처 수정">${s ? escapeHtml(s.name) : '미지정'} <span style="font-size:11px">✏️</span></span>`;
         })()}
       </td>
       <td class="num" style="white-space:nowrap">
