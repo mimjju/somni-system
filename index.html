@@ -529,6 +529,14 @@
           <label>담당 직원</label>
           <select id="wl-stage-employee"></select>
         </div>
+        <div class="field" style="max-width:100px">
+          <label>수량 (선택)</label>
+          <input id="wl-stage-qty" type="number" min="0" step="any" placeholder="예: 3">
+        </div>
+        <div class="field" style="max-width:110px">
+          <label>단위 (선택)</label>
+          <input id="wl-stage-qty-unit" placeholder="예: 배합, 개">
+        </div>
         <div class="field" style="max-width:120px">
           <label>소요시간 (분)</label>
           <input id="wl-stage-time" type="number" min="0" step="any" placeholder="예: 30">
@@ -537,6 +545,7 @@
           <button class="primary" onclick="addWorkLogStage()">담기</button>
         </div>
       </div>
+      <div class="hint">공정마다 자연스러운 단위로 수량을 남겨보세요. 예: 반죽은 "3배합", 굽기·컷팅/포장은 "150개"처럼요. (안 남겨도 저장은 돼요.)</div>
       <div id="wl-stage-table"></div>
 
       <div class="field-row" style="margin-top:10px">
@@ -750,7 +759,7 @@ function mapEmployee(r) {
   return { id: r.id, name: r.name, hourlyWage: r.hourly_wage, avatar: r.avatar || '🐣', points: r.points || 0 };
 }
 function mapWorkLog(r, stagesByLog) {
-  return { id: r.id, date: r.date, recipeId: r.recipe_id, batches: r.batches, loss: r.loss, note: r.note, stages: (stagesByLog[r.id] || []).map(s => ({ stageName: s.stage_name, employeeId: s.employee_id, timeMinutes: s.time_minutes })) };
+  return { id: r.id, date: r.date, recipeId: r.recipe_id, batches: r.batches, loss: r.loss, note: r.note, stages: (stagesByLog[r.id] || []).map(s => ({ stageName: s.stage_name, employeeId: s.employee_id, timeMinutes: s.time_minutes, qty: s.qty ?? null, qtyUnit: s.qty_unit ?? null })) };
 }
 function mapShipment(r) {
   return { id: r.id, date: r.date, cafeId: r.cafe_id, recipeId: r.recipe_id, qty: r.qty, enteredQty: r.entered_qty, enteredUnit: r.entered_unit, unitCost: r.unit_cost, totalCost: r.total_cost };
@@ -1001,7 +1010,9 @@ function renderIngredients() {
       <td class="num" id="stock-cell-${ing.id}">
         <span onclick="toggleStockInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:3px; background:var(--accent-light); color:var(--accent-dark); font-weight:600;" title="클릭해서 재고 수정">${fmtQty(stock)}개 <span style="font-size:11px">✏️</span></span> ${isLow ? '<span class="badge low">부족</span>' : ''}
       </td>
-      <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + '개' : '-'}</td>
+      <td class="num" id="minstock-cell-${ing.id}">
+        <span onclick="toggleMinStockInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:3px; background:var(--accent-light); color:var(--accent-dark); font-weight:600;" title="클릭해서 부족 기준 수정">${ing.minStock != null ? fmtQty(ing.minStock) + '개' : '미설정'} <span style="font-size:11px">✏️</span></span>
+      </td>
       <td id="supplier-cell-${ing.id}">
         ${(() => {
           const s = suppliers.find(sp => sp.id === ing.supplierId);
@@ -1017,12 +1028,50 @@ function renderIngredients() {
   `;
   }).join('');
   el.innerHTML = `
-    <table style="min-width:820px">
+    <table style="min-width:860px; table-layout:fixed">
+      <colgroup>
+        <col style="width:16%"><col style="width:11%"><col style="width:11%"><col style="width:13%">
+        <col style="width:12%"><col style="width:12%"><col style="width:13%"><col style="width:12%">
+      </colgroup>
       <thead><tr><th>재료명</th><th class="num">구매 단위/수량</th><th class="num">구매 가격</th><th class="num">단위당 단가</th><th class="num">현재 재고</th><th class="num">부족 기준</th><th>거래처</th><th class="num"></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
   renderLowStockAlerts();
+}
+
+function toggleMinStockInlineEdit(id) {
+  const ing = ingredients.find(i => i.id === id);
+  const cell = document.getElementById('minstock-cell-' + id);
+  if (!ing || !cell) return;
+  cell.innerHTML = `
+    <input type="number" id="minstock-inline-input-${id}" value="${ing.minStock ?? ''}" min="0" step="any" placeholder="미설정"
+      style="width:70px; padding:5px 8px; font-size:13px; display:inline-block">
+    <button class="link" onclick="saveInlineMinStock('${id}')">저장</button>
+    <button class="link" onclick="renderIngredients()">취소</button>
+  `;
+  const input = document.getElementById('minstock-inline-input-' + id);
+  input.focus();
+  input.select();
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveInlineMinStock(id);
+    if (e.key === 'Escape') renderIngredients();
+  });
+}
+
+async function saveInlineMinStock(id) {
+  const ing = ingredients.find(i => i.id === id);
+  const input = document.getElementById('minstock-inline-input-' + id);
+  if (!ing || !input) return;
+  const raw = input.value.trim();
+  const newMinStock = raw === '' ? null : parseFloat(raw);
+  if (raw !== '' && (isNaN(newMinStock) || newMinStock < 0)) { toast('부족 기준을 올바르게 입력해주세요.'); return; }
+
+  const { error } = await sb.from('ingredients').update({ min_stock: newMinStock }).eq('id', id);
+  if (error) { toast('수정 실패: ' + error.message); return; }
+  ing.minStock = newMinStock;
+  toast('부족 기준이 수정되었습니다.');
+  renderIngredients();
 }
 
 function toggleSupplierInlineEdit(id) {
@@ -1989,11 +2038,16 @@ function addWorkLogStage() {
   const stageName = document.getElementById('wl-stage-name').value;
   const employeeId = document.getElementById('wl-stage-employee').value;
   const timeMinutes = parseFloat(document.getElementById('wl-stage-time').value);
+  const qtyInput = document.getElementById('wl-stage-qty').value;
+  const qty = qtyInput === '' ? null : parseFloat(qtyInput);
+  const qtyUnit = document.getElementById('wl-stage-qty-unit').value.trim() || null;
   if (!employeeId) { toast('담당 직원을 먼저 등록/선택해주세요.'); return; }
   if (!(timeMinutes > 0)) { toast('소요시간을 올바르게 입력해주세요.'); return; }
 
-  currentWorkLogStages.push({ stageName, employeeId, timeMinutes });
+  currentWorkLogStages.push({ stageName, employeeId, timeMinutes, qty, qtyUnit });
   document.getElementById('wl-stage-time').value = '';
+  document.getElementById('wl-stage-qty').value = '';
+  document.getElementById('wl-stage-qty-unit').value = '';
   renderWorkLogStages();
 }
 
@@ -2012,9 +2066,10 @@ function renderWorkLogStages() {
   const rows = currentWorkLogStages.map((s, idx) => {
     const emp = employees.find(e => e.id === s.employeeId);
     totalMin += s.timeMinutes;
+    const qtyText = (s.qty != null && s.qtyUnit) ? `, ${fmtQty(s.qty)}${escapeHtml(s.qtyUnit)}` : '';
     return `
       <div class="mini-row">
-        <span>${escapeHtml(s.stageName)} — ${emp ? `${emp.avatar || '🐣'} ${escapeHtml(emp.name)}` : '(삭제된 직원)'} (${s.timeMinutes}분)</span>
+        <span>${escapeHtml(s.stageName)} — ${emp ? `${emp.avatar || '🐣'} ${escapeHtml(emp.name)}` : '(삭제된 직원)'} (${s.timeMinutes}분${qtyText})</span>
         <span><button class="link danger" onclick="removeWorkLogStage(${idx})">삭제</button></span>
       </div>
     `;
@@ -2048,7 +2103,8 @@ async function submitWorkLog() {
     await sb.from('work_log_stages').delete().eq('work_log_id', editingWorkLogId);
     if (stages.length) {
       await sb.from('work_log_stages').insert(stages.map(s => ({
-        work_log_id: editingWorkLogId, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes
+        work_log_id: editingWorkLogId, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes,
+        qty: s.qty ?? null, qty_unit: s.qtyUnit ?? null
       })));
     }
     const w = prev;
@@ -2063,7 +2119,8 @@ async function submitWorkLog() {
     if (error) { toast('저장 실패: ' + error.message); return; }
     if (stages.length) {
       await sb.from('work_log_stages').insert(stages.map(s => ({
-        work_log_id: data.id, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes
+        work_log_id: data.id, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes,
+        qty: s.qty ?? null, qty_unit: s.qtyUnit ?? null
       })));
     }
     const w = { id: data.id, date, recipeId, batches, loss, note, stages };
@@ -2203,7 +2260,8 @@ async function deleteWorkLog(id) {
 function workLogStageSummary(w) {
   return (w.stages || []).map(s => {
     const emp = employees.find(e => e.id === s.employeeId);
-    return `${escapeHtml(s.stageName)}:${emp ? `${emp.avatar || '🐣'} ${escapeHtml(emp.name)}` : '(삭제됨)'}(${s.timeMinutes}분)`;
+    const qtyText = (s.qty != null && s.qtyUnit) ? `, ${fmtQty(s.qty)}${escapeHtml(s.qtyUnit)}` : '';
+    return `${escapeHtml(s.stageName)}:${emp ? `${emp.avatar || '🐣'} ${escapeHtml(emp.name)}` : '(삭제됨)'}(${s.timeMinutes}분${qtyText})`;
   }).join(' · ');
 }
 
