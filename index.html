@@ -1814,18 +1814,20 @@ function renderPoSupplierItems() {
   const rows = items.map(ing => {
     const stock = ing.stock ?? 0;
     const isLow = ing.minStock != null && stock <= ing.minStock;
-    const suggested = ing.minStock != null ? Math.max(0, ing.minStock * 2 - stock) : '';
+    const packSize = ing.purchaseQty > 0 ? ing.purchaseQty : 1;
+    const shortfall = ing.minStock != null ? Math.max(0, ing.minStock * 2 - stock) : 0;
+    const suggestedPacks = shortfall > 0 ? Math.ceil(shortfall / packSize) : '';
     return `
       <div class="field-row" style="align-items:center; margin-bottom:6px">
-        <label style="display:flex; align-items:center; gap:8px; flex:2; min-width:160px; font-weight:600; font-size:13.5px">
+        <label style="display:flex; align-items:center; gap:8px; flex:2; min-width:180px; font-weight:600; font-size:13.5px">
           <input type="checkbox" id="po-item-check-${ing.id}" ${isLow ? 'checked' : ''} style="width:auto">
           ${escapeHtml(ing.name)} ${isLow ? '<span class="badge low">부족</span>' : ''}
-          <span style="color:var(--sub); font-weight:600; font-size:12px">(현재 ${fmtQty(stock)}${escapeHtml(ing.purchaseUnit)})</span>
+          <span style="color:var(--sub); font-weight:600; font-size:12px">(1개 = ${fmtQty(packSize)}${escapeHtml(ing.purchaseUnit)}, 현재 ${fmtQty(stock)}${escapeHtml(ing.purchaseUnit)})</span>
         </label>
-        <div class="field" style="max-width:140px; margin-bottom:0">
-          <input id="po-item-qty-${ing.id}" type="number" min="0" step="any" placeholder="수량" value="${suggested === '' ? '' : fmtQty(suggested)}">
+        <div class="field" style="max-width:120px; margin-bottom:0">
+          <input id="po-item-qty-${ing.id}" type="number" min="0" step="1" placeholder="수량" value="${suggestedPacks === '' ? '' : suggestedPacks}">
         </div>
-        <span style="color:var(--sub); font-size:12.5px; min-width:30px">${escapeHtml(ing.purchaseUnit)}</span>
+        <span style="color:var(--sub); font-size:12.5px; min-width:20px">개</span>
       </div>
     `;
   }).join('');
@@ -1842,9 +1844,10 @@ function generatePurchaseOrder() {
     const checkEl = document.getElementById(`po-item-check-${ing.id}`);
     const qtyEl = document.getElementById(`po-item-qty-${ing.id}`);
     if (!checkEl || !checkEl.checked) return;
-    const qty = parseFloat(qtyEl.value);
-    if (!(qty > 0)) return;
-    lines.push(`- ${ing.name} : ${fmtQty(qty)}${ing.purchaseUnit}`);
+    const packs = parseFloat(qtyEl.value);
+    if (!(packs > 0)) return;
+    const packSize = ing.purchaseQty > 0 ? ing.purchaseQty : 1;
+    lines.push(`- ${ing.name} (${fmtQty(packSize)}${ing.purchaseUnit}) : ${fmtQty(packs)}개`);
   });
   if (lines.length === 0) { toast('발주할 재료를 체크하고 수량을 입력해주세요.'); return; }
 
