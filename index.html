@@ -273,6 +273,10 @@
           <label>재고 부족 기준 (이하일 때 알림)</label>
           <input id="ing-min-stock" type="number" min="0" step="any" placeholder="예: 2 (선택사항)">
         </div>
+        <div class="field">
+          <label>거래처 (선택)</label>
+          <select id="ing-supplier"><option value="">지정 안 함</option></select>
+        </div>
       </div>
       <div class="field-row">
         <button class="primary" id="ing-submit-btn" onclick="submitIngredient()">추가하기</button>
@@ -357,6 +361,11 @@
 
   <!-- 재고 관리 -->
   <div class="panel active" id="panel-inventory">
+    <div class="card" id="low-stock-alert-card">
+      <h2>⚠ 재고 부족 알림</h2>
+      <div id="low-stock-alert-list"></div>
+    </div>
+
     <div class="card">
       <h2>재고 입고 / 수정</h2>
       <div class="segmented">
@@ -405,6 +414,51 @@
 
   <!-- 발주 입고 -->
   <div class="panel" id="panel-po">
+    <div class="card">
+      <h2>거래처 관리</h2>
+      <div class="hint">재료 등록 시 거래처를 지정해두면, 아래 "정식 발주서 작성"에서 거래처별로 발주서를 만들 수 있어요.</div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>거래처명</label>
+          <input id="supplier-name" placeholder="예: 마켓보로">
+        </div>
+        <div class="field">
+          <label>연락처 (선택)</label>
+          <input id="supplier-phone" placeholder="예: 010-1234-5678">
+        </div>
+        <div class="field">
+          <label>메모 (선택)</label>
+          <input id="supplier-memo" placeholder="예: 매주 화/금 배송">
+        </div>
+        <div class="field" style="max-width:100px">
+          <button class="primary" onclick="submitSupplier()">추가</button>
+        </div>
+      </div>
+      <div id="supplier-table"></div>
+    </div>
+
+    <div class="card">
+      <h2>정식 발주서 작성</h2>
+      <div class="hint">거래처를 선택하면 그 거래처의 재료 목록이 나와요. 보낼 재료를 체크하고 수량을 넣은 뒤 발주서를 만들어보세요. (재고 부족 재료는 기본으로 체크되어 있어요.)</div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>거래처</label>
+          <select id="po-supplier-select" onchange="renderPoSupplierItems()"></select>
+        </div>
+      </div>
+      <div id="po-supplier-items"></div>
+      <div class="field-row" style="margin-top:10px">
+        <button class="primary" onclick="generatePurchaseOrder()">발주서 만들기</button>
+      </div>
+      <div id="po-generated-card" style="display:none; margin-top:14px">
+        <div class="hint">아래 내용을 복사해서 카톡·문자로 거래처에 보내세요.</div>
+        <textarea id="po-generated-text" rows="10" readonly style="width:100%; padding:10px; border:2px solid var(--border); border-radius:var(--radius-sm); font-size:13.5px; font-family:inherit;"></textarea>
+        <div class="field-row" style="margin-top:10px">
+          <button class="primary" onclick="copyPurchaseOrder()">📋 복사하기</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <h2>발주 텍스트 붙여넣기</h2>
       <div class="hint">
@@ -552,6 +606,24 @@
     </div>
 
     <div class="card">
+      <h2>📊 최근 6개월 리포트</h2>
+      <div class="hint">오늘 기준 최근 6개월 추이를 자동으로 보여줘요.</div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:12.5px; font-weight:800; color:var(--accent-dark); margin-bottom:8px">생산량 추이 (개)</div>
+        <div id="report-production-chart"></div>
+      </div>
+      <div style="margin-bottom:20px">
+        <div style="font-size:12.5px; font-weight:800; color:var(--accent-dark); margin-bottom:8px">로스율 추이 (%)</div>
+        <div id="report-loss-chart"></div>
+      </div>
+      <div>
+        <div style="font-size:12.5px; font-weight:800; color:var(--accent-dark); margin-bottom:8px">카페별 공급액 추이 (원가 기준)</div>
+        <div id="report-cafe-chart"></div>
+        <div id="report-cafe-legend" style="margin-top:10px; display:flex; gap:12px; flex-wrap:wrap"></div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>데이터 백업 / 이전</h2>
       <div class="hint">지금 서버(Supabase)에 있는 데이터를 파일로 저장합니다. "예전 백업 파일 가져오기"는 이전 로컬/localStorage 버전에서 받아둔 백업 파일을 딱 한 번 서버로 옮길 때만 쓰세요 — 누를 때마다 새로 추가되니 반복 실행하지 마세요.</div>
       <div class="field-row">
@@ -611,6 +683,7 @@ let cafes = [];
 let workLogs = [];
 let shipments = [];
 let finishedGoods = [];
+let suppliers = [];
 
 let editingIngredientId = null;
 let editingRecipeId = null;
@@ -671,6 +744,8 @@ async function unlockApp() {
   renderIngredients();
   populateIngredientSelect();
   renderRecipeItems();
+  renderSupplierTable();
+  populateSupplierSelects();
   switchTab('inventory');
 }
 
@@ -685,7 +760,10 @@ async function lockApp() {
 
 // ---------- Data loading (Supabase) ----------
 function mapIngredient(r) {
-  return { id: r.id, name: r.name, purchaseQty: r.purchase_qty, purchaseUnit: r.purchase_unit, purchasePrice: r.purchase_price, stock: r.stock, minStock: r.min_stock };
+  return { id: r.id, name: r.name, purchaseQty: r.purchase_qty, purchaseUnit: r.purchase_unit, purchasePrice: r.purchase_price, stock: r.stock, minStock: r.min_stock, supplierId: r.supplier_id || null };
+}
+function mapSupplier(r) {
+  return { id: r.id, name: r.name, phone: r.phone, memo: r.memo };
 }
 function mapRecipe(r, itemsByRecipe) {
   return { id: r.id, name: r.name, yieldQty: r.yield_qty, packLabel: r.pack_label, packSize: r.pack_size, items: (itemsByRecipe[r.id] || []).map(it => ({ ingredientId: it.ingredient_id, amount: it.amount })) };
@@ -707,16 +785,18 @@ function mapFinishedGoodsBatch(r) {
 }
 
 async function loadAllData() {
-  const [ingRes, cafeRes, stockLogRes, fgRes] = await Promise.all([
+  const [ingRes, cafeRes, stockLogRes, fgRes, supRes] = await Promise.all([
     sb.from('ingredients').select('*'),
     sb.from('cafes').select('*'),
     sb.from('stock_logs').select('*').order('date', { ascending: false }).limit(300),
-    sb.from('finished_goods_batches').select('*').order('produced_date', { ascending: true })
+    sb.from('finished_goods_batches').select('*').order('produced_date', { ascending: true }),
+    sb.from('suppliers').select('*')
   ]);
   ingredients = (ingRes.data || []).map(mapIngredient);
   cafes = (cafeRes.data || []).map(r => ({ id: r.id, name: r.name }));
   stockLogs = (stockLogRes.data || []).map(mapStockLog);
   finishedGoods = (fgRes.data || []).map(mapFinishedGoodsBatch);
+  suppliers = (supRes.data || []).map(mapSupplier);
 
   const [recRes, itemsRes] = await Promise.all([
     sb.from('recipes').select('*'),
@@ -814,8 +894,9 @@ function switchTab(tab) {
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'recipe-list') renderRecipeList();
   if (tab === 'recipe-form') populateIngredientSelect();
-  if (tab === 'inventory') { populateStockSelect(); renderInventoryTable(); renderInventoryLog(); }
+  if (tab === 'inventory') { populateStockSelect(); renderInventoryTable(); renderInventoryLog(); renderLowStockAlerts(); }
   if (tab === 'finished-goods') renderFinishedGoods();
+  if (tab === 'po') { renderSupplierTable(); populateSupplierSelects(); }
   if (tab === 'worklog') {
     renderEmployees();
     renderLeaderboard();
@@ -852,19 +933,20 @@ async function submitIngredient() {
   const stock = stockInput === '' ? 0 : parseFloat(stockInput);
   const minStockInput = document.getElementById('ing-min-stock').value;
   const minStock = minStockInput === '' ? null : parseFloat(minStockInput);
+  const supplierId = document.getElementById('ing-supplier').value || null;
 
   if (!name || !unit || !(qty > 0) || !(price >= 0) || isNaN(price) || isNaN(stock) || stock < 0) {
     toast('필수 항목을 올바르게 입력해주세요.');
     return;
   }
 
-  const row = { name, purchase_qty: qty, purchase_unit: unit, purchase_price: price, stock, min_stock: minStock };
+  const row = { name, purchase_qty: qty, purchase_unit: unit, purchase_price: price, stock, min_stock: minStock, supplier_id: supplierId };
 
   if (editingIngredientId) {
     const { error } = await sb.from('ingredients').update(row).eq('id', editingIngredientId);
     if (error) { toast('저장 실패: ' + error.message); return; }
     const ing = ingredients.find(i => i.id === editingIngredientId);
-    Object.assign(ing, { name, purchaseQty: qty, purchaseUnit: unit, purchasePrice: price, stock, minStock });
+    Object.assign(ing, { name, purchaseQty: qty, purchaseUnit: unit, purchasePrice: price, stock, minStock, supplierId });
     toast('재료가 수정되었습니다.');
     cancelIngredientEdit();
   } else {
@@ -884,6 +966,7 @@ function clearIngredientForm() {
   document.getElementById('ing-price').value = '';
   document.getElementById('ing-stock').value = '';
   document.getElementById('ing-min-stock').value = '';
+  document.getElementById('ing-supplier').value = '';
 }
 
 function editIngredient(id) {
@@ -896,6 +979,7 @@ function editIngredient(id) {
   document.getElementById('ing-price').value = ing.purchasePrice;
   document.getElementById('ing-stock').value = ing.stock ?? 0;
   document.getElementById('ing-min-stock').value = ing.minStock ?? '';
+  document.getElementById('ing-supplier').value = ing.supplierId || '';
   document.getElementById('ing-form-title').textContent = '재료 수정';
   document.getElementById('ing-submit-btn').textContent = '수정 완료';
   document.getElementById('ing-cancel-btn').style.display = 'inline-block';
@@ -954,6 +1038,26 @@ function renderIngredients() {
       <tbody>${rows}</tbody>
     </table>
   `;
+  renderLowStockAlerts();
+}
+
+function renderLowStockAlerts() {
+  const el = document.getElementById('low-stock-alert-list');
+  if (!el) return;
+  const lowItems = ingredients
+    .filter(ing => ing.minStock != null && (ing.stock ?? 0) <= ing.minStock)
+    .sort((a, b) => (a.minStock - (a.stock ?? 0) === b.minStock - (b.stock ?? 0)) ? 0 : (b.minStock - (b.stock ?? 0)) - (a.minStock - (a.stock ?? 0)));
+  if (lowItems.length === 0) {
+    el.innerHTML = '<div class="empty">부족한 재료가 없어요. 좋아요! 🎉</div>';
+    return;
+  }
+  const rows = lowItems.map(ing => `
+    <div class="mini-row">
+      <span>${escapeHtml(ing.name)}</span>
+      <span class="badge low">현재 ${fmtQty(ing.stock ?? 0)}${escapeHtml(ing.purchaseUnit)} / 기준 ${fmtQty(ing.minStock)}${escapeHtml(ing.purchaseUnit)}</span>
+    </div>
+  `).join('');
+  el.innerHTML = `<div class="hint">${lowItems.length}개 재료가 부족 기준 이하예요. 발주가 필요해요.</div>` + rows;
 }
 
 async function applyUnitConversion(ing, newUnit, factor) {
@@ -1631,6 +1735,135 @@ function renderLeaderboard() {
   el.innerHTML = rows;
 }
 
+// ---------- Suppliers (거래처) & 정식 발주서 ----------
+async function submitSupplier() {
+  const name = document.getElementById('supplier-name').value.trim();
+  const phone = document.getElementById('supplier-phone').value.trim() || null;
+  const memo = document.getElementById('supplier-memo').value.trim() || null;
+  if (!name) { toast('거래처명을 입력해주세요.'); return; }
+  const { data, error } = await sb.from('suppliers').insert({ name, phone, memo }).select().single();
+  if (error) { toast('저장 실패: ' + error.message); return; }
+  suppliers.push(mapSupplier(data));
+  document.getElementById('supplier-name').value = '';
+  document.getElementById('supplier-phone').value = '';
+  document.getElementById('supplier-memo').value = '';
+  renderSupplierTable();
+  populateSupplierSelects();
+  toast('거래처가 추가되었습니다.');
+}
+
+async function deleteSupplier(id) {
+  const usedIn = ingredients.some(i => i.supplierId === id);
+  if (usedIn && !confirm('이 거래처로 지정된 재료가 있습니다. 그래도 삭제하시겠습니까? (재료의 거래처 지정은 해제됩니다)')) return;
+  if (!usedIn && !confirm('이 거래처를 삭제하시겠습니까?')) return;
+  const { error } = await sb.from('suppliers').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return; }
+  suppliers = suppliers.filter(s => s.id !== id);
+  ingredients.forEach(i => { if (i.supplierId === id) i.supplierId = null; });
+  renderSupplierTable();
+  populateSupplierSelects();
+}
+
+function renderSupplierTable() {
+  const el = document.getElementById('supplier-table');
+  if (!el) return;
+  if (suppliers.length === 0) { el.innerHTML = '<div class="empty">등록된 거래처가 없습니다.</div>'; return; }
+  const rows = suppliers.map(s => {
+    const ingCount = ingredients.filter(i => i.supplierId === s.id).length;
+    return `
+      <tr>
+        <td>${escapeHtml(s.name)}</td>
+        <td>${s.phone ? escapeHtml(s.phone) : '-'}</td>
+        <td>${s.memo ? escapeHtml(s.memo) : '-'}</td>
+        <td class="num">${ingCount}개 재료</td>
+        <td class="num"><button class="link danger" onclick="deleteSupplier('${s.id}')">삭제</button></td>
+      </tr>
+    `;
+  }).join('');
+  el.innerHTML = `<table><thead><tr><th>거래처명</th><th>연락처</th><th>메모</th><th class="num">담당 재료</th><th class="num"></th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function populateSupplierSelects() {
+  const options = suppliers.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+
+  const ingSel = document.getElementById('ing-supplier');
+  if (ingSel) {
+    const prev = ingSel.value;
+    ingSel.innerHTML = '<option value="">지정 안 함</option>' + options;
+    if (prev && suppliers.some(s => s.id === prev)) ingSel.value = prev;
+  }
+
+  const poSel = document.getElementById('po-supplier-select');
+  if (poSel) {
+    const prev = poSel.value;
+    poSel.innerHTML = suppliers.length ? options : '<option value="">등록된 거래처가 없습니다</option>';
+    if (prev && suppliers.some(s => s.id === prev)) poSel.value = prev;
+    renderPoSupplierItems();
+  }
+}
+
+function renderPoSupplierItems() {
+  const el = document.getElementById('po-supplier-items');
+  if (!el) return;
+  document.getElementById('po-generated-card').style.display = 'none';
+  const supplierId = document.getElementById('po-supplier-select').value;
+  if (!supplierId) { el.innerHTML = '<div class="empty">거래처를 먼저 등록·선택해주세요.</div>'; return; }
+  const items = ingredients.filter(i => i.supplierId === supplierId);
+  if (items.length === 0) { el.innerHTML = '<div class="empty">이 거래처로 지정된 재료가 없습니다. "재료 관리"에서 재료에 거래처를 지정해주세요.</div>'; return; }
+
+  const rows = items.map(ing => {
+    const stock = ing.stock ?? 0;
+    const isLow = ing.minStock != null && stock <= ing.minStock;
+    const suggested = ing.minStock != null ? Math.max(0, ing.minStock * 2 - stock) : '';
+    return `
+      <div class="field-row" style="align-items:center; margin-bottom:6px">
+        <label style="display:flex; align-items:center; gap:8px; flex:2; min-width:160px; font-weight:600; font-size:13.5px">
+          <input type="checkbox" id="po-item-check-${ing.id}" ${isLow ? 'checked' : ''} style="width:auto">
+          ${escapeHtml(ing.name)} ${isLow ? '<span class="badge low">부족</span>' : ''}
+          <span style="color:var(--sub); font-weight:600; font-size:12px">(현재 ${fmtQty(stock)}${escapeHtml(ing.purchaseUnit)})</span>
+        </label>
+        <div class="field" style="max-width:140px; margin-bottom:0">
+          <input id="po-item-qty-${ing.id}" type="number" min="0" step="any" placeholder="수량" value="${suggested === '' ? '' : fmtQty(suggested)}">
+        </div>
+        <span style="color:var(--sub); font-size:12.5px; min-width:30px">${escapeHtml(ing.purchaseUnit)}</span>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = rows;
+}
+
+function generatePurchaseOrder() {
+  const supplierId = document.getElementById('po-supplier-select').value;
+  const supplier = suppliers.find(s => s.id === supplierId);
+  if (!supplier) { toast('거래처를 먼저 선택해주세요.'); return; }
+  const items = ingredients.filter(i => i.supplierId === supplierId);
+  const lines = [];
+  items.forEach(ing => {
+    const checkEl = document.getElementById(`po-item-check-${ing.id}`);
+    const qtyEl = document.getElementById(`po-item-qty-${ing.id}`);
+    if (!checkEl || !checkEl.checked) return;
+    const qty = parseFloat(qtyEl.value);
+    if (!(qty > 0)) return;
+    lines.push(`- ${ing.name} : ${fmtQty(qty)}${ing.purchaseUnit}`);
+  });
+  if (lines.length === 0) { toast('발주할 재료를 체크하고 수량을 입력해주세요.'); return; }
+
+  const text = `[발주서]\n거래처: ${supplier.name}\n날짜: ${todayStr()}\n\n${lines.join('\n')}\n\n확인 후 배송 부탁드립니다. 감사합니다!`;
+  document.getElementById('po-generated-text').value = text;
+  document.getElementById('po-generated-card').style.display = 'block';
+  toast('발주서가 만들어졌습니다.');
+}
+
+async function copyPurchaseOrder() {
+  const text = document.getElementById('po-generated-text').value;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('클립보드에 복사되었습니다. 📋');
+  } catch (e) {
+    toast('복사에 실패했습니다. 텍스트를 직접 선택해서 복사해주세요.');
+  }
+}
+
 // ---------- Cafes ----------
 async function submitCafe() {
   const name = document.getElementById('cafe-name').value.trim();
@@ -2041,6 +2274,112 @@ function renderDashboard() {
     }).join('');
     empEl.innerHTML = `<table><thead><tr><th>직원</th><th class="num">총 작업시간</th><th class="num">참여 생산건수</th><th>공정별 참여</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
+
+  renderProductionAndLossCharts();
+  renderCafeTrendChart();
+}
+
+// ---------- 리포트: 최근 6개월 추이 차트 ----------
+function lastNMonths(n) {
+  const result = [];
+  const now = new Date();
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return result;
+}
+
+function renderBarChart(containerId, labels, values, color, formatFn) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const max = Math.max(1, ...values);
+  const bars = labels.map((label, i) => {
+    const v = values[i] || 0;
+    const pct = Math.max(2, Math.round((v / max) * 100));
+    return `
+      <div style="display:flex; flex-direction:column; align-items:center; flex:1; gap:6px">
+        <div style="font-size:11px; font-weight:800; color:var(--accent-dark)">${formatFn(v)}</div>
+        <div style="width:100%; max-width:34px; height:90px; display:flex; align-items:flex-end; background:var(--good-bg); border-radius:8px; overflow:hidden">
+          <div style="width:100%; height:${pct}%; background:${color}; border-radius:8px 8px 0 0; transition:height .3s var(--bounce)"></div>
+        </div>
+        <div style="font-size:11px; color:var(--sub); font-weight:700">${escapeHtml(label)}</div>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = `<div style="display:flex; gap:8px; align-items:flex-end">${bars}</div>`;
+}
+
+function renderProductionAndLossCharts() {
+  const months = lastNMonths(6);
+  const labels = months.map(m => m.slice(5) + '월');
+
+  const production = months.map(m => {
+    const logs = workLogs.filter(w => w.date.slice(0, 7) === m);
+    return logs.reduce((sum, w) => {
+      const recipe = recipes.find(r => r.id === w.recipeId);
+      if (!recipe) return sum;
+      return sum + (recipe.yieldQty * w.batches - w.loss);
+    }, 0);
+  });
+
+  const lossRates = months.map(m => {
+    const logs = workLogs.filter(w => w.date.slice(0, 7) === m);
+    let totalGross = 0, totalLoss = 0;
+    logs.forEach(w => {
+      const recipe = recipes.find(r => r.id === w.recipeId);
+      if (!recipe) return;
+      totalGross += recipe.yieldQty * w.batches;
+      totalLoss += w.loss;
+    });
+    return totalGross > 0 ? (totalLoss / totalGross) * 100 : 0;
+  });
+
+  renderBarChart('report-production-chart', labels, production, 'var(--accent)', v => fmtQty(v) + '개');
+  renderBarChart('report-loss-chart', labels, lossRates, 'var(--danger)', v => v.toFixed(1) + '%');
+}
+
+function renderCafeTrendChart() {
+  const el = document.getElementById('report-cafe-chart');
+  const legendEl = document.getElementById('report-cafe-legend');
+  if (!el) return;
+
+  if (cafes.length === 0) {
+    el.innerHTML = '<div class="empty">등록된 카페가 없습니다.</div>';
+    legendEl.innerHTML = '';
+    return;
+  }
+
+  const months = lastNMonths(6);
+  const palette = ['--c1', '--c2', '--c3', '--c4', '--c5', '--c6', '--c7', '--c8'];
+  const dataByCafe = cafes.map((cafe, idx) => ({
+    cafe,
+    color: `var(${palette[idx % palette.length]})`,
+    values: months.map(m => shipments
+      .filter(s => s.cafeId === cafe.id && s.date.slice(0, 7) === m)
+      .reduce((sum, s) => sum + s.totalCost, 0))
+  }));
+  const max = Math.max(1, ...dataByCafe.flatMap(d => d.values));
+
+  const cols = months.map((m, mi) => {
+    const bars = dataByCafe.map(d => {
+      const v = d.values[mi];
+      const pct = Math.max(2, Math.round((v / max) * 100));
+      return `<div style="flex:1; max-width:14px; height:90px; display:flex; align-items:flex-end; background:var(--good-bg); border-radius:4px; overflow:hidden"><div style="width:100%; height:${pct}%; background:${d.color}; border-radius:4px 4px 0 0"></div></div>`;
+    }).join('');
+    return `
+      <div style="display:flex; flex-direction:column; align-items:center; flex:1; gap:6px">
+        <div style="display:flex; gap:2px; align-items:flex-end; height:90px">${bars}</div>
+        <div style="font-size:11px; color:var(--sub); font-weight:700">${m.slice(5)}월</div>
+      </div>
+    `;
+  }).join('');
+  el.innerHTML = `<div style="display:flex; gap:10px; align-items:flex-end">${cols}</div>`;
+  legendEl.innerHTML = dataByCafe.map(d => `
+    <span style="display:flex; align-items:center; gap:5px; font-size:12px; color:var(--sub); font-weight:700">
+      <span style="width:10px; height:10px; border-radius:3px; background:${d.color}; display:inline-block"></span>${escapeHtml(d.cafe.name)}
+    </span>
+  `).join('');
 }
 
 function escapeHtml(str) {
