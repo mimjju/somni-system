@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>솜리 베이킹실 통합 관리 시스템</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -404,7 +405,7 @@
   <div class="panel" id="panel-po">
     <div class="card">
       <h2>거래처 관리</h2>
-      <div class="hint">재료 등록 시 거래처를 지정해두면, 아래 "정식 발주서 작성"에서 거래처별로 발주서를 만들 수 있어요.</div>
+      <div class="hint">재료 등록 시 거래처를 지정해두면 재료별로 어디서 사는지 기록해둘 수 있어요.</div>
       <div class="field-row" style="align-items:flex-end">
         <div class="field">
           <label>거래처명</label>
@@ -427,34 +428,19 @@
     </div>
 
     <div class="card">
-      <h2>정식 발주서 작성</h2>
-      <div class="hint">거래처를 선택하면 그 거래처의 재료 목록이 나와요. 보낼 재료를 체크하고 수량을 넣은 뒤 발주서를 만들어보세요. (재고 부족 재료는 기본으로 체크되어 있어요.)</div>
-      <div class="field-row" style="align-items:flex-end">
-        <div class="field">
-          <label>거래처</label>
-          <select id="po-supplier-select" onchange="renderPoSupplierItems()"></select>
-        </div>
-      </div>
-      <div id="po-supplier-items"></div>
-      <div class="field-row" style="margin-top:10px">
-        <button class="primary" onclick="generatePurchaseOrder()">발주서 만들기</button>
-      </div>
-      <div id="po-generated-card" style="display:none; margin-top:14px">
-        <div class="hint">아래 내용을 복사해서 카톡·문자로 거래처에 보내세요.</div>
-        <textarea id="po-generated-text" rows="10" readonly style="width:100%; padding:10px; border:2px solid var(--border); border-radius:var(--radius-sm); font-size:13.5px; font-family:inherit;"></textarea>
-        <div class="field-row" style="margin-top:10px">
-          <button class="primary" onclick="copyPurchaseOrder()">📋 복사하기</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>발주 텍스트 붙여넣기</h2>
+      <h2>발주 사진으로 입고</h2>
       <div class="hint">
-        마켓보로 등 주문내역 캡처를 Claude에게 보내면 아래 형식으로 정리해드립니다.<br>
-        한 줄에 상품 하나씩, <code>상품명 | 수량 | 금액</code> 형식으로 붙여넣으세요.<br>
-        예: <code>큐원 백설탕 15kg | 1 | 23000</code>
+        마켓봄·천년스마트발주 등에서 주문한 발주서를 캡처해서 올리면 사진 속 글자를 자동으로 읽어와요.<br>
+        읽어온 내용은 아래 상자에 채워지는데, 사진 인식이 완벽하지 않을 수 있으니 <code>상품명 | 수량 | 금액</code> 형식에 맞게 한 번 확인·수정한 뒤 "파싱하기"를 눌러주세요.<br>
+        (직접 타이핑해서 붙여넣어도 돼요.)
       </div>
+      <div class="field-row">
+        <div class="field" style="max-width:260px">
+          <button class="secondary" onclick="document.getElementById('po-photo-input').click()">📷 발주서 사진 선택</button>
+          <input type="file" id="po-photo-input" accept="image/*" style="display:none" onchange="handleOrderPhotoUpload(this)">
+        </div>
+      </div>
+      <div class="hint" id="po-ocr-status" style="margin:0 0 10px"></div>
       <textarea id="po-paste" rows="6" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13.5px; font-family:inherit;" placeholder="큐원 백설탕 15kg | 1 | 23000
 건국유업 생크림 500ml | 16 | 68800"></textarea>
       <div class="field-row" style="margin-top:10px">
@@ -1581,6 +1567,22 @@ function findIngredientMatch(name) {
   });
 }
 
+async function handleOrderPhotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('po-ocr-status');
+  statusEl.textContent = '사진에서 글자를 읽는 중이에요... (몇 초 걸릴 수 있어요)';
+  try {
+    const { data: { text } } = await Tesseract.recognize(file, 'kor+eng');
+    const cleaned = text.split('\n').map(l => l.trim()).filter(Boolean).join('\n');
+    document.getElementById('po-paste').value = cleaned;
+    statusEl.textContent = '아래 내용을 확인해주세요. "상품명 | 수량 | 금액" 형식과 다르면 고친 뒤 "파싱하기"를 눌러주세요.';
+  } catch (e) {
+    statusEl.textContent = '사진을 읽는 데 실패했어요. 다시 시도하거나 직접 입력해주세요.';
+  }
+  input.value = '';
+}
+
 function parsePastedOrder() {
   const text = document.getElementById('po-paste').value;
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -1905,79 +1907,6 @@ function populateSupplierSelects() {
     const prev = ingSel.value;
     ingSel.innerHTML = '<option value="">지정 안 함</option>' + options;
     if (prev && suppliers.some(s => s.id === prev)) ingSel.value = prev;
-  }
-
-  const poSel = document.getElementById('po-supplier-select');
-  if (poSel) {
-    const prev = poSel.value;
-    poSel.innerHTML = suppliers.length ? options : '<option value="">등록된 거래처가 없습니다</option>';
-    if (prev && suppliers.some(s => s.id === prev)) poSel.value = prev;
-    renderPoSupplierItems();
-  }
-}
-
-function renderPoSupplierItems() {
-  const el = document.getElementById('po-supplier-items');
-  if (!el) return;
-  document.getElementById('po-generated-card').style.display = 'none';
-  const supplierId = document.getElementById('po-supplier-select').value;
-  if (!supplierId) { el.innerHTML = '<div class="empty">거래처를 먼저 등록·선택해주세요.</div>'; return; }
-  const items = ingredients.filter(i => i.supplierId === supplierId);
-  if (items.length === 0) { el.innerHTML = '<div class="empty">이 거래처로 지정된 재료가 없습니다. "재료 관리"에서 재료에 거래처를 지정해주세요.</div>'; return; }
-
-  const rows = items.map(ing => {
-    const stock = ing.stock ?? 0;
-    const isLow = ing.minStock != null && stock <= ing.minStock;
-    const packSize = ing.purchaseQty > 0 ? ing.purchaseQty : 1;
-    const shortfall = ing.minStock != null ? Math.max(0, ing.minStock * 2 - stock) : 0;
-    const suggestedPacks = shortfall > 0 ? Math.ceil(shortfall) : '';
-    return `
-      <div class="field-row" style="align-items:center; margin-bottom:6px">
-        <label style="display:flex; align-items:center; gap:8px; flex:2; min-width:180px; font-weight:600; font-size:13.5px">
-          <input type="checkbox" id="po-item-check-${ing.id}" ${isLow ? 'checked' : ''} style="width:auto">
-          ${escapeHtml(ing.name)} ${isLow ? '<span class="badge low">부족</span>' : ''}
-          <span style="color:var(--sub); font-weight:600; font-size:12px">(1개 = ${fmtQty(packSize)}${escapeHtml(ing.purchaseUnit)}, 현재 ${fmtQty(stock)}개)</span>
-        </label>
-        <div class="field" style="max-width:120px; margin-bottom:0">
-          <input id="po-item-qty-${ing.id}" type="number" min="0" step="1" placeholder="수량" value="${suggestedPacks === '' ? '' : suggestedPacks}">
-        </div>
-        <span style="color:var(--sub); font-size:12.5px; min-width:20px">개</span>
-      </div>
-    `;
-  }).join('');
-  el.innerHTML = rows;
-}
-
-function generatePurchaseOrder() {
-  const supplierId = document.getElementById('po-supplier-select').value;
-  const supplier = suppliers.find(s => s.id === supplierId);
-  if (!supplier) { toast('거래처를 먼저 선택해주세요.'); return; }
-  const items = ingredients.filter(i => i.supplierId === supplierId);
-  const lines = [];
-  items.forEach(ing => {
-    const checkEl = document.getElementById(`po-item-check-${ing.id}`);
-    const qtyEl = document.getElementById(`po-item-qty-${ing.id}`);
-    if (!checkEl || !checkEl.checked) return;
-    const packs = parseFloat(qtyEl.value);
-    if (!(packs > 0)) return;
-    const packSize = ing.purchaseQty > 0 ? ing.purchaseQty : 1;
-    lines.push(`- ${ing.name} (${fmtQty(packSize)}${ing.purchaseUnit}) : ${fmtQty(packs)}개`);
-  });
-  if (lines.length === 0) { toast('발주할 재료를 체크하고 수량을 입력해주세요.'); return; }
-
-  const text = `[발주서]\n거래처: ${supplier.name}\n날짜: ${todayStr()}\n\n${lines.join('\n')}\n\n확인 후 배송 부탁드립니다. 감사합니다!`;
-  document.getElementById('po-generated-text').value = text;
-  document.getElementById('po-generated-card').style.display = 'block';
-  toast('발주서가 만들어졌습니다.');
-}
-
-async function copyPurchaseOrder() {
-  const text = document.getElementById('po-generated-text').value;
-  try {
-    await navigator.clipboard.writeText(text);
-    toast('클립보드에 복사되었습니다. 📋');
-  } catch (e) {
-    toast('복사에 실패했습니다. 텍스트를 직접 선택해서 복사해주세요.');
   }
 }
 
