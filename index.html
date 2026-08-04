@@ -43,7 +43,7 @@
     padding: 28px 18px 70px;
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 900px; margin: 0 auto; }
+  .wrap { max-width: 1160px; margin: 0 auto; }
   h1 { font-size: 25px; margin: 0; letter-spacing: -0.01em; font-weight: 900; }
   .subtitle { color: var(--sub); font-size: 12.5px; margin: 6px 0 22px; letter-spacing: 0.01em; font-weight: 600; }
 
@@ -388,7 +388,7 @@
         <button class="secondary" onclick="bulkConvertKgToG()">kg → g 일괄 변환</button>
       </div>
       <div class="hint">"현재 재고" 숫자를 클릭하면 그 자리에서 바로 수정할 수 있어요.</div>
-      <div id="ingredient-table"></div>
+      <div id="ingredient-table" style="overflow-x:auto"></div>
     </div>
 
     <div class="card">
@@ -1028,7 +1028,7 @@ function renderIngredients() {
           return `<span onclick="toggleSupplierInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; background:var(--accent-light); color:var(--accent-dark); font-weight:800;" title="클릭해서 거래처 수정">${s ? escapeHtml(s.name) : '미지정'} <span style="font-size:11px">✏️</span></span>`;
         })()}
       </td>
-      <td class="num">
+      <td class="num" style="white-space:nowrap">
         <button class="link" onclick="editIngredient('${ing.id}')">수정</button>
         <button class="link" onclick="convertIngredientUnit('${ing.id}')">단위변환</button>
         <button class="link danger" onclick="deleteIngredient('${ing.id}')">삭제</button>
@@ -1037,7 +1037,7 @@ function renderIngredients() {
   `;
   }).join('');
   el.innerHTML = `
-    <table>
+    <table style="min-width:820px">
       <thead><tr><th>재료명</th><th class="num">구매 단위/수량</th><th class="num">구매 가격</th><th class="num">단위당 단가</th><th class="num">현재 재고</th><th class="num">부족 기준</th><th>거래처</th><th class="num"></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
