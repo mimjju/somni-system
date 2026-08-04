@@ -1022,6 +1022,12 @@ function renderIngredients() {
         <span onclick="toggleStockInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; background:var(--accent-light); color:var(--accent-dark); font-weight:800;" title="클릭해서 재고 수정">${fmtQty(stock)}개 <span style="font-size:11px">✏️</span></span> ${isLow ? '<span class="badge low">부족</span>' : ''}
       </td>
       <td class="num">${ing.minStock != null ? fmtQty(ing.minStock) + '개' : '-'}</td>
+      <td id="supplier-cell-${ing.id}">
+        ${(() => {
+          const s = suppliers.find(sp => sp.id === ing.supplierId);
+          return `<span onclick="toggleSupplierInlineEdit('${ing.id}')" style="cursor:pointer; display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; background:var(--accent-light); color:var(--accent-dark); font-weight:800;" title="클릭해서 거래처 수정">${s ? escapeHtml(s.name) : '미지정'} <span style="font-size:11px">✏️</span></span>`;
+        })()}
+      </td>
       <td class="num">
         <button class="link" onclick="editIngredient('${ing.id}')">수정</button>
         <button class="link" onclick="convertIngredientUnit('${ing.id}')">단위변환</button>
@@ -1032,11 +1038,35 @@ function renderIngredients() {
   }).join('');
   el.innerHTML = `
     <table>
-      <thead><tr><th>재료명</th><th class="num">구매 단위/수량</th><th class="num">구매 가격</th><th class="num">단위당 단가</th><th class="num">현재 재고</th><th class="num">부족 기준</th><th class="num"></th></tr></thead>
+      <thead><tr><th>재료명</th><th class="num">구매 단위/수량</th><th class="num">구매 가격</th><th class="num">단위당 단가</th><th class="num">현재 재고</th><th class="num">부족 기준</th><th>거래처</th><th class="num"></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
   renderLowStockAlerts();
+}
+
+function toggleSupplierInlineEdit(id) {
+  const ing = ingredients.find(i => i.id === id);
+  const cell = document.getElementById('supplier-cell-' + id);
+  if (!ing || !cell) return;
+  const options = ['<option value="">지정 안 함</option>']
+    .concat(suppliers.map(s => `<option value="${s.id}" ${s.id === ing.supplierId ? 'selected' : ''}>${escapeHtml(s.name)}</option>`))
+    .join('');
+  cell.innerHTML = `<select id="supplier-inline-select-${id}" onchange="saveInlineSupplier('${id}')" style="width:auto; display:inline-block; padding:6px 8px; font-size:13px;">${options}</select>`;
+  document.getElementById('supplier-inline-select-' + id).focus();
+}
+
+async function saveInlineSupplier(id) {
+  const ing = ingredients.find(i => i.id === id);
+  const select = document.getElementById('supplier-inline-select-' + id);
+  if (!ing || !select) return;
+  const newSupplierId = select.value || null;
+  const { error } = await sb.from('ingredients').update({ supplier_id: newSupplierId }).eq('id', id);
+  if (error) { toast('수정 실패: ' + error.message); return; }
+  ing.supplierId = newSupplierId;
+  toast('거래처가 수정되었습니다.');
+  renderIngredients();
+  renderSupplierTable();
 }
 
 function toggleStockInlineEdit(id) {
