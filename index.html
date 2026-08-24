@@ -496,9 +496,13 @@
 
     <div class="card">
       <h2 id="worklog-form-title">업무일지 작성</h2>
+      <div class="hint" style="margin-top:-4px">
+        <b>배합 수</b>는 "이 제품을 총 몇 배합 만들었는지"를 뜻해요 (재료·재고 차감 기준이라 딱 한 번만 정확히 입력하면 돼요).<br>
+        <b>공정(반죽→굽기→컷팅/포장)</b>은 같은 생산 건이면 전부 이 업무일지 하나에 같이 담아주세요. 굽기·컷팅/포장이 다른 날 끝나면, 새로 만들지 말고 아래 "업무일지 목록"에서 이 일지를 <b>수정</b>해서 공정만 추가해주세요 — 배합 수를 그대로 두면 재고는 다시 차감되지 않아요.
+      </div>
       <div class="field-row">
         <div class="field">
-          <label>날짜</label>
+          <label>날짜 (반죽 시작일 기준)</label>
           <input id="wl-date" type="date">
         </div>
         <div class="field">
@@ -506,8 +510,8 @@
           <select id="wl-recipe"></select>
         </div>
         <div class="field">
-          <label>배합 수</label>
-          <input id="wl-batches" type="number" min="0" step="any" placeholder="예: 1">
+          <label>배합 수 (전체 생산 기준)</label>
+          <input id="wl-batches" type="number" min="0" step="any" placeholder="예: 3">
         </div>
         <div class="field">
           <label>로스 수량 (개)</label>
@@ -515,7 +519,7 @@
         </div>
       </div>
 
-      <div class="hint">공정별로 담당자와 소요시간이 다르면 아래에서 하나씩 담아주세요 (반죽/굽기/컷팅·포장 등).</div>
+      <div class="hint">공정별로 담당자·소요시간·수량이 다르면 아래에서 하나씩 담아주세요. 반죽/굽기/컷팅·포장을 전부 오늘 한다면 순서대로 다 담고 저장하면 돼요.</div>
       <div class="field-row" style="align-items:flex-end">
         <div class="field">
           <label>공정</label>
@@ -532,7 +536,7 @@
         </div>
         <div class="field" style="max-width:100px">
           <label>수량 (선택)</label>
-          <input id="wl-stage-qty" type="number" min="0" step="any" placeholder="예: 3">
+          <input id="wl-stage-qty" type="number" min="0" step="any" placeholder="예: 150">
         </div>
         <div class="field" style="max-width:110px">
           <label>단위 (선택)</label>
@@ -546,7 +550,7 @@
           <button class="primary" onclick="addWorkLogStage()">담기</button>
         </div>
       </div>
-      <div class="hint">공정마다 자연스러운 단위로 수량을 남겨보세요. 예: 반죽은 "3배합", 굽기·컷팅/포장은 "150개"처럼요. (안 남겨도 저장은 돼요.)</div>
+      <div class="hint">공정 "수량"은 그 공정만의 실제 작업량이에요 — 반죽은 보통 "3배합", 굽기·컷팅/포장은 실제로 구운/자른/포장한 "150개"처럼요. 이 수량은 기록용일 뿐, 재고 차감은 위 "배합 수"로만 계산돼요. (안 남겨도 저장은 돼요.)</div>
       <div id="wl-stage-table"></div>
 
       <div class="field-row" style="margin-top:10px">
@@ -2277,13 +2281,14 @@ function renderDashboard() {
   const monthWorkLogs = workLogs.filter(w => w.date.slice(0, 7) === month);
   const monthShipments = shipments.filter(s => s.date.slice(0, 7) === month);
 
-  let materialCost = 0, laborCost = 0, lossCost = 0;
+  let materialCost = 0, laborCost = 0, lossCost = 0, totalProducedQty = 0;
   monthWorkLogs.forEach(w => {
     const recipe = recipes.find(r => r.id === w.recipeId);
     if (!recipe) return;
     const cost = calcRecipeCost(recipe);
     materialCost += cost.total * w.batches;
     lossCost += cost.perUnit * w.loss;
+    totalProducedQty += recipe.yieldQty * w.batches - w.loss;
     (w.stages || []).forEach(s => {
       const emp = employees.find(e => e.id === s.employeeId);
       if (emp) laborCost += (s.timeMinutes / 60) * emp.hourlyWage;
@@ -2294,6 +2299,7 @@ function renderDashboard() {
   const estimatedProfit = supplyTotal - materialCost - laborCost - lossCost;
 
   document.getElementById('dash-summary-1').innerHTML = `
+    <div class="box"><div class="label">총 생산량</div><div class="value">${fmtQty(totalProducedQty)}개</div></div>
     <div class="box"><div class="label">총 재료비</div><div class="value">${fmtWon(materialCost)}</div></div>
     <div class="box"><div class="label">총 인건비</div><div class="value">${fmtWon(laborCost)}</div></div>
     <div class="box"><div class="label">총 로스금액</div><div class="value">${fmtWon(lossCost)}</div></div>
