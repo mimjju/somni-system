@@ -9,28 +9,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #F5F4F0;
-    --card: #FAFAF7;
-    --border: #DEE1D7;
-    --text: #33362F;
-    --sub: #8B9187;
-    --accent: #6B8A63;
-    --accent-dark: #4F6849;
-    --accent-light: #E8EDE3;
+    --bg: #FBF6F0;
+    --card: #FFFDFA;
+    --border: #EDDCCB;
+    --text: #3B2C22;
+    --sub: #957F6E;
+    --accent: #E07A35;
+    --accent-dark: #B65A1C;
+    --accent-light: #FDE9D8;
     --danger: #A8574F;
     --danger-bg: #F1E3DE;
-    --good-bg: #EEF1E7;
-    --mint: #7A9670;
-    --c1: #6B8A63;
-    --c2: #8B9E82;
+    --good-bg: #FCF2E8;
+    --mint: #E8894A;
+    --c1: #E07A35;
+    --c2: #F0A36B;
     --c3: #A8925A;
     --c4: #8C7A94;
     --c5: #A8574F;
     --c6: #6E8C94;
     --c7: #7A6F5E;
     --c8: #B0855A;
-    --shadow-sm: 0 1px 3px rgba(51,54,47,0.08);
-    --shadow-md: 0 6px 18px rgba(51,54,47,0.12);
+    --shadow-sm: 0 1px 3px rgba(59,44,34,0.08);
+    --shadow-md: 0 6px 18px rgba(59,44,34,0.12);
     --radius-lg: 4px;
     --radius-md: 3px;
     --radius-sm: 3px;
@@ -157,11 +157,11 @@
 
   .totals { display: flex; gap: 14px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); flex-wrap: wrap; }
   .totals .box { flex: 1; min-width: 120px; background: var(--good-bg); border-radius: var(--radius-md); padding: 14px; border: 1px solid var(--border); }
-  .totals .box:nth-child(1) { background: var(--accent-light); border-color: #CFDBC7; }
-  .totals .box:nth-child(2) { background: #F3ECD9; border-color: #E3D2AC; }
+  .totals .box:nth-child(1) { background: var(--accent-light); border-color: #F5C8A4; }
+  .totals .box:nth-child(2) { background: #F6C9A6; border-color: #E9A877; }
   .totals .box:nth-child(3) { background: var(--danger-bg); border-color: #E0C0B5; }
-  .totals .box:nth-child(4) { background: #EFEDE7; border-color: #DCD6C8; }
-  .totals .box:nth-child(5) { background: var(--good-bg); border-color: #D3DCC7; }
+  .totals .box:nth-child(4) { background: #EFE8E1; border-color: #DDD2C6; }
+  .totals .box:nth-child(5) { background: var(--good-bg); border-color: #F2D2B6; }
   .totals .label { font-size: 12.5px; color: var(--sub); font-weight: 700; }
   .totals .value { font-size: 23px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
 
@@ -169,9 +169,9 @@
   .recipe-detail { margin-top: 10px; display: none; }
   .recipe-detail.open { display: block; animation: panelIn .25s var(--bounce); }
 
-  .badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: var(--radius-sm); background: var(--accent-light); color: var(--accent-dark); margin-left: 6px; font-weight: 700; border: 1px solid #CFDBC7; }
+  .badge { display: inline-block; font-size: 12px; padding: 3px 10px; border-radius: var(--radius-sm); background: var(--accent-light); color: var(--accent-dark); margin-left: 6px; font-weight: 700; border: 1px solid #F5C8A4; }
   .badge.low { background: var(--danger-bg); color: var(--danger); font-weight: 700; border-color: #DEC2BB; }
-  .badge.points { background: #F3ECD9; color: #6E5A28; border-color: #E3D2AC; }
+  .badge.points { background: #F6C9A6; color: #7A3510; border-color: #E9A877; }
   .warn { color: var(--danger); font-size: 13.5px; font-weight: 600; }
 
   .toast {
@@ -211,24 +211,30 @@
   .sched-pick.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
   .lv { font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 700; white-space: nowrap; }
   .lv.easy { background: var(--accent-light); color: var(--accent-dark); }
-  .lv.pro { background: #F3ECD9; color: #6E5A28; }
+  .lv.pro { background: #F6C9A6; color: #7A3510; }
   .sched-table { min-width: 1040px; table-layout: fixed; font-size: 14px; }
   .sched-table th, .sched-table td { border: 1px solid var(--border); padding: 8px 7px; vertical-align: top; }
-  .sched-table th { text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text); background: var(--good-bg); }
-  .sched-table th .stores { display: block; font-weight: 500; font-size: 11.5px; color: var(--sub); margin-top: 3px; line-height: 1.4; }
+  /* 요일·이름 칸은 진하게 (작업 칸과 구분) */
+  .sched-table th { text-transform: none; letter-spacing: 0; font-size: 14px; font-weight: 800; color: #fff; background: var(--accent-dark); border-color: #A04F18; }
+  .sched-table th .stores { display: block; font-weight: 600; font-size: 11.5px; margin-top: 3px; line-height: 1.4; }
+  .sched-table th span, .sched-table th .stores, .sched-table th .wk-bar-axis { color: rgba(255,255,255,0.88) !important; }
+  .sched-table th.today { background: #8E3F0E; box-shadow: inset 0 0 0 3px #FFD9BC; }
+  .sched-table tbody th { background: var(--accent); border-color: #C9661F; }
+  .sched-table thead th:first-child { background: var(--accent-dark); }
+  .sched-table tr > th:first-child { position: sticky; left: 0; z-index: 1; }
   .sched-table tbody tr:hover { background: none; }
   .sched-table td.sched-cell { height: 96px; }
   .sched-table td.sched-cell.clickable { cursor: copy; }
   .sched-table td.sched-cell.clickable:hover { background: var(--good-bg); }
-  .sched-table td.off { background: #EFEDE7; }
+  .sched-table td.off { background: #EFE8E1; }
   .sched-table .today { box-shadow: inset 0 0 0 2px var(--accent); }
   .sched-chip {
     display: flex; align-items: flex-start; gap: 4px; font-size: 13px; padding: 4px 6px; border-radius: 3px;
     margin-bottom: 4px; cursor: pointer; font-weight: 600; line-height: 1.35; border: 1px solid transparent;
   }
-  .sched-chip.easy { background: var(--accent-light); color: var(--accent-dark); border-color: #CFDBC7; }
-  .sched-chip.pro { background: #F3ECD9; color: #6E5A28; border-color: #E3D2AC; }
-  .sched-chip.done { background: #EFEDE7; color: var(--sub); border-color: #DCD6C8; text-decoration: line-through; }
+  .sched-chip.easy { background: var(--accent-light); color: var(--accent-dark); border-color: #F5C8A4; }
+  .sched-chip.pro { background: #F6C9A6; color: #7A3510; border-color: #E9A877; }
+  .sched-chip.done { background: #EFE8E1; color: var(--sub); border-color: #DDD2C6; text-decoration: line-through; }
   .sched-chip .bt { font-size: 11px; font-weight: 700; padding: 0 4px; border-radius: 3px; background: rgba(255,255,255,0.7); white-space: nowrap; }
   .sched-chip .x { margin-left: auto; border: none; background: none; color: inherit; cursor: pointer; font-size: 12px; padding: 0 2px; }
   .sched-foot { font-size: 12px; color: var(--sub); margin-top: 4px; display: flex; align-items: center; gap: 3px; font-weight: 600; }
@@ -277,7 +283,7 @@
   .wk-person:last-child { border-bottom: none; }
   .wk-person.click { cursor: copy; }
   .wk-person.click:hover { background: var(--good-bg); }
-  .wk-person.off { background: #F6F5F1; }
+  .wk-person.off { background: #F8F3EE; }
   .wk-person .nm { font-weight: 800; font-size: 13.5px; display: flex; align-items: baseline; justify-content: space-between; gap: 4px; margin-bottom: 5px; }
   .wk-person .sh { font-size: 11.5px; font-weight: 600; color: var(--sub); white-space: nowrap; }
   .wk-person .sh.edit { cursor: pointer; color: var(--accent-dark); text-decoration: underline dotted; }
@@ -289,7 +295,7 @@
   .wk-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--sub); font-weight: 600; margin-top: 10px; }
   .wk-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(0,0,0,0.08); }
   .shift-input { width: 96px; padding: 5px 6px; font-size: 13.5px; text-align: center; }
-  .shift-input.off { background: #EFEDE7; }
+  .shift-input.off { background: #EFE8E1; }
 
   /* 레시피북 */
   .rb-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
@@ -2274,7 +2280,7 @@ function selectScheduleTask(id) {
   renderSchedulePalette();
 }
 
-const COUNT_COLORS = ['#F3F2EE', '#E3EBDC', '#C5D6BA', '#9DB894', '#6B8A63', '#4F6849'];
+const COUNT_COLORS = ['#F7F1EB', '#FDE2CB', '#F8C197', '#F09A5B', '#E07A35', '#B65A1C'];
 
 // 그날 시간대별(1시간) 같이 일하는 인원 막대
 function headcountBar(shifts) {
@@ -2348,8 +2354,8 @@ function renderScheduleWeek(week) {
   </table>
   <div class="wk-legend">
     <span><i style="background:var(--accent-light)"></i>쉬움</span>
-    <span><i style="background:#F3ECD9"></i>숙련</span>
-    <span><i style="background:#EFEDE7"></i>완료·휴무</span>
+    <span><i style="background:#F6C9A6"></i>숙련</span>
+    <span><i style="background:#EFE8E1"></i>완료·휴무</span>
     <span>칸 아래 = 작업시간 / 근무시간 (넘으면 빨간색)</span>
     <span>요일 막대 = 시간대별 같이 일하는 인원: ${COUNT_COLORS.slice(1).map((c, i) => `<i style="background:${c}"></i>${i + 1}${i === COUNT_COLORS.length - 2 ? '+' : ''}`).join(' ')}</span>
   </div>`;
