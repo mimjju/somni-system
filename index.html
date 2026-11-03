@@ -246,6 +246,20 @@
   .day-toggle { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; cursor: pointer; font-weight: 700; font-size: 13.5px; color: var(--accent-dark); }
   .day-toggle.closed { background: var(--danger-bg); color: var(--danger); border-color: #DEC2BB; text-decoration: line-through; }
 
+  /* 주간 표: 왼쪽 작업 목록 + 사람×요일 */
+  .sched-layout { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; }
+  .sched-side { width: 180px; flex-shrink: 0; position: sticky; top: 10px; }
+  .sched-side .side-title { font-size: 13px; font-weight: 800; color: var(--accent-dark); margin-bottom: 8px; }
+  .sched-side .sched-pick { display: flex; flex-wrap: wrap; width: 100%; margin-bottom: 6px; text-align: left; }
+  .sched-side .sched-pick .nm { flex-basis: 100%; }
+  .sched-table th .bar { margin-top: 5px; }
+  .sched-table .cell-shift { cursor: pointer; color: var(--accent-dark); text-decoration: underline dotted; }
+  @media (max-width: 760px) {
+    .sched-layout { flex-direction: column; }
+    .sched-side { width: 100%; position: static; }
+    .sched-side .sched-pick { display: inline-flex; width: auto; }
+  }
+
   /* 주간 보드 (월~일 칸) */
   .wk { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 8px; min-width: 1100px; }
   .wk-col { border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; display: flex; flex-direction: column; }
@@ -349,15 +363,21 @@
         </div>
       </div>
       <div id="sched-admin-tools" style="display:none; margin-top:14px">
-        <div class="hint" style="margin:0 0 10px">① 아래에서 작업을 고르고 ② 요일 칸 안의 <b>사람 이름 칸</b>을 누르면 그날 할 일로 들어가요. 같은 작업을 여러 번 눌러도 돼요.<br>작업의 ✕를 누르면 빠지고, 이름 옆 근무시간을 누르면 <b>이번 주 그날만</b> 근무시간을 바꿀 수 있어요.</div>
-        <div id="sched-palette" class="sched-palette"></div>
-        <div class="field-row" style="margin:12px 0 0; gap:6px">
+        <div class="hint" style="margin:0 0 10px">① 왼쪽 작업 목록에서 작업을 고르고 ② 표에서 <b>사람 × 요일 칸</b>을 누르면 그날 할 일로 들어가요. 같은 작업을 여러 번 눌러도 돼요.<br>칸 안 작업의 ✕를 누르면 빠지고, 칸 아래 근무시간을 누르면 <b>이번 주 그날만</b> 근무시간을 바꿀 수 있어요. 작업시간이 근무시간을 넘으면 빨간색이 돼요.</div>
+        <div class="field-row" style="margin:0; gap:6px">
           <button class="secondary" onclick="copyPrevWeekSchedule()">지난주 그대로 복사</button>
           <button class="secondary" onclick="clearWeekSchedule()">이번 주 비우기</button>
           <button class="secondary" onclick="printSchedule()">🖨 주간 인쇄</button>
         </div>
       </div>
-      <div id="sched-week" style="overflow-x:auto; margin-top:16px"></div>
+      <div class="sched-layout">
+        <div id="sched-side" class="sched-side" style="display:none">
+          <div class="side-title">작업 목록</div>
+          <div id="sched-palette"></div>
+          <div class="hint" style="margin:8px 0 0; font-size:12px">작업 고르기 → 칸 누르기</div>
+        </div>
+        <div id="sched-week" style="overflow-x:auto; flex:1; min-width:0"></div>
+      </div>
     </div>
 
     <div class="card" id="sched-needs-card">
@@ -1120,6 +1140,7 @@ function applyAdminVisibility() {
   });
   document.getElementById('employee-manage-card').style.display = adminMode ? 'block' : 'none';
   document.getElementById('sched-admin-tools').style.display = adminMode ? 'block' : 'none';
+  document.getElementById('sched-side').style.display = adminMode ? 'block' : 'none';
   document.getElementById('sched-admin-cards').style.display = adminMode ? 'block' : 'none';
   document.getElementById('rb-calc-card').style.display = adminMode ? 'block' : 'none';
   if (!adminMode) {
@@ -2242,7 +2263,7 @@ function renderSchedulePalette() {
   }
   el.innerHTML = schedTasks.map(t => `
     <button class="sched-pick ${t.id === schedSelectedTaskId ? 'selected' : ''}" onclick="selectScheduleTask('${t.id}')">
-      ${escapeHtml(t.name)} <span class="lv ${t.level}">${levelLabel(t.level)}</span>
+      <span class="nm">${escapeHtml(t.name)}</span> <span class="lv ${t.level}">${levelLabel(t.level)}</span>
       <span style="font-size:12px; color:var(--sub)">${fmtMinutes(t.minutes)}</span>
     </button>
   `).join('');
@@ -2283,48 +2304,55 @@ function renderScheduleWeek(week) {
     return;
   }
   const todayIdx = schedWeekStart === mondayOf(todayStr()) ? todayIndex() : -1;
-  const cols = DAY_NAMES.map((d, day) => {
-    const people = employees.map(emp => ({ emp, shift: schedShift(week, emp.id, day), tasks: dayTasks(week, emp.id, day) }));
-    const working = people.filter(p => p.shift || p.tasks.length);
-    const off = people.filter(p => !p.shift && !p.tasks.length);
-    const shifts = people.map(p => p.shift).filter(Boolean);
+
+  const head = DAY_NAMES.map((d, day) => {
+    const shifts = employees.map(e => schedShift(week, e.id, day)).filter(Boolean);
     const open = cafes.filter(c => !(c.closedDays || []).includes(day)).map(c => escapeHtml(c.name));
-
-    const blocks = working.map(({ emp, shift, tasks }) => {
-      const min = tasks.reduce((s, x) => s + (Number(x.t.minutes) || 0), 0);
-      const hours = shift ? (shift.end - shift.start) / 60 : 0;
-      const shLabel = adminMode
-        ? `<span class="sh edit" onclick="event.stopPropagation(); editDayShift('${emp.id}', ${day})" title="이번 주 이날만 바꾸기">${shortShift(shift)}${shift && shift.override ? '*' : ''}</span>`
-        : `<span class="sh">${shortShift(shift)}</span>`;
-      return `<div class="wk-person ${shift ? '' : 'off'} ${adminMode ? 'click' : ''}" ${adminMode ? `onclick="addAssignment('${emp.id}', ${day})"` : ''}>
-        <div class="nm"><span>${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}</span>${shLabel}</div>
-        ${tasks.map(({ a, t }) => taskChip(a, t)).join('')}
-        ${tasks.length || adminMode ? `<div class="foot ${min > hours * 60 ? 'over' : ''}">${tasks.length ? `작업 ${fmtQty(min / 60)}h / 근무 ${fmtQty(hours)}h` : '눌러서 작업 추가'}</div>` : ''}
-      </div>`;
-    }).join('');
-
-    const offList = off.length ? `<div class="wk-off-list">휴무: ${off.map(({ emp }) => adminMode
-      ? `<span class="click" onclick="addAssignment('${emp.id}', ${day})" title="휴무지만 작업 넣기">${escapeHtml(emp.name)}</span>`
-      : `<span>${escapeHtml(emp.name)}</span>`).join(', ')}</div>` : '';
-
-    return `<div class="wk-col ${day === todayIdx ? 'today' : ''}">
-      <div class="wk-head">
-        <div class="d">${d}<small>${shortDate(addDays(schedWeekStart, day))}${day === todayIdx ? ' · 오늘' : ''}</small></div>
-        ${cafes.length ? `<div class="st">출고: ${open.length ? open.join('·') : '없음'}</div>` : ''}
-        <div class="cnt">${shifts.length ? `${shifts.length}명 출근` : '쉬는 날'}</div>
-        ${headcountBar(shifts)}
-      </div>
-      ${blocks}${offList}
-    </div>`;
+    return `<th class="${day === todayIdx ? 'today' : ''}">${d} <span style="font-weight:500; color:var(--sub)">${shortDate(addDays(schedWeekStart, day))}</span>
+      ${cafes.length ? `<span class="stores">출고: ${open.length ? open.join('·') : '없음'}</span>` : ''}
+      <div class="bar">${headcountBar(shifts) || '<span class="stores">쉬는 날</span>'}</div></th>`;
   }).join('');
 
-  el.innerHTML = `<div class="wk">${cols}</div>
-    <div class="wk-legend">
-      <span><i style="background:var(--accent-light)"></i>쉬움</span>
-      <span><i style="background:#F3ECD9"></i>숙련</span>
-      <span><i style="background:#EFEDE7"></i>완료</span>
-      <span>막대 = 시간대별 같이 일하는 인원: ${COUNT_COLORS.slice(1).map((c, i) => `<i style="background:${c}"></i>${i + 1}${i === COUNT_COLORS.length - 2 ? '+' : ''}`).join(' ')}</span>
-    </div>`;
+  const dayTotals = DAY_NAMES.map(() => ({ min: 0, people: 0 }));
+  const rows = employees.map(emp => {
+    let weekMin = 0, weekHours = 0;
+    const cells = DAY_NAMES.map((_, day) => {
+      const shift = schedShift(week, emp.id, day);
+      const tasks = dayTasks(week, emp.id, day);
+      const min = tasks.reduce((s, x) => s + (Number(x.t.minutes) || 0), 0);
+      const hours = shift ? (shift.end - shift.start) / 60 : 0;
+      weekMin += min; weekHours += hours;
+      dayTotals[day].min += min;
+      if (shift) dayTotals[day].people++;
+      const shiftText = `${shortShift(shift)}${shift && shift.override ? '*' : ''}`;
+      const shiftHtml = adminMode
+        ? `<span class="cell-shift" onclick="event.stopPropagation(); editDayShift('${emp.id}', ${day})" title="이번 주 이날만 바꾸기">${shiftText}</span>`
+        : shiftText;
+      return `<td class="sched-cell ${shift ? '' : 'off'} ${adminMode ? 'clickable' : ''} ${day === todayIdx ? 'today' : ''}"
+        ${adminMode ? `onclick="addAssignment('${emp.id}', ${day})"` : ''}>
+        ${tasks.map(({ a, t }) => taskChip(a, t)).join('')}
+        <div class="sched-foot ${min > hours * 60 ? 'over' : ''}">${tasks.length ? `${fmtQty(min / 60)}h / ` : ''}${shiftHtml}</div>
+      </td>`;
+    }).join('');
+    return `<tr><th style="text-align:left; vertical-align:top">${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}
+      <span class="stores">작업 ${fmtQty(weekMin / 60)}h / 근무 ${fmtQty(weekHours)}h</span></th>${cells}</tr>`;
+  }).join('');
+
+  const totalRow = `<tr><th style="text-align:left">합계</th>${dayTotals.map(t =>
+    `<td style="font-size:12.5px; color:var(--sub); font-weight:700">${t.people}명 출근<br>작업 ${fmtQty(t.min / 60)}h</td>`).join('')}</tr>`;
+
+  el.innerHTML = `<table class="sched-table">
+    <colgroup><col style="width:110px">${DAY_NAMES.map(() => '<col>').join('')}</colgroup>
+    <thead><tr><th></th>${head}</tr></thead>
+    <tbody>${rows}${totalRow}</tbody>
+  </table>
+  <div class="wk-legend">
+    <span><i style="background:var(--accent-light)"></i>쉬움</span>
+    <span><i style="background:#F3ECD9"></i>숙련</span>
+    <span><i style="background:#EFEDE7"></i>완료·휴무</span>
+    <span>칸 아래 = 작업시간 / 근무시간 (넘으면 빨간색)</span>
+    <span>요일 막대 = 시간대별 같이 일하는 인원: ${COUNT_COLORS.slice(1).map((c, i) => `<i style="background:${c}"></i>${i + 1}${i === COUNT_COLORS.length - 2 ? '+' : ''}`).join(' ')}</span>
+  </div>`;
 }
 
 function renderScheduleToday(thisWeek) {
