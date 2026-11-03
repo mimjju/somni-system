@@ -246,48 +246,34 @@
   .day-toggle { padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; cursor: pointer; font-weight: 700; font-size: 13.5px; color: var(--accent-dark); }
   .day-toggle.closed { background: var(--danger-bg); color: var(--danger); border-color: #DEC2BB; text-decoration: line-through; }
 
-  /* 시간표 (타임라인) */
-  .sched-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 16px 0 14px; }
-  .sched-day {
-    border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; cursor: pointer;
-    padding: 8px 4px; text-align: center; font-family: inherit; color: var(--text);
-  }
-  .sched-day:hover { border-color: var(--accent); }
-  .sched-day.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .sched-day .d { font-size: 16px; font-weight: 800; }
-  .sched-day .sub { font-size: 11.5px; font-weight: 600; opacity: .8; margin-top: 2px; }
-  .sched-day.today:not(.active) { box-shadow: inset 0 0 0 2px var(--accent); }
-  .tl { min-width: 860px; font-size: 13px; }
-  .tl-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); }
-  .tl-row:last-child { border-bottom: none; }
-  .tl-label { width: 150px; flex-shrink: 0; padding: 8px 8px 8px 0; }
-  .tl-label .nm { font-weight: 800; font-size: 14.5px; }
-  .tl-label .sh { font-size: 12px; color: var(--sub); font-weight: 600; margin-top: 2px; }
-  .tl-label .sh.edit { cursor: pointer; color: var(--accent-dark); text-decoration: underline dotted; }
-  .tl-track { position: relative; flex: 1; min-height: 58px; }
-  .tl-track.click { cursor: copy; }
-  .tl-grid { position: absolute; inset: 0; pointer-events: none; }
-  .tl-grid span { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #E4E6DE; }
-  .tl-grid span.hr { border-left: 1px solid #DEE1D7; }
-  .tl-shift { position: absolute; top: 6px; bottom: 6px; background: var(--accent-light); border: 1px solid #CFDBC7; border-radius: 3px; }
-  .tl-off { position: absolute; inset: 0; display: flex; align-items: center; padding-left: 10px; color: var(--sub); font-weight: 700; background: repeating-linear-gradient(-45deg, #F3F2EE, #F3F2EE 6px, #ECEBE6 6px, #ECEBE6 12px); }
-  .tl-task {
-    position: absolute; top: 10px; bottom: 10px; border-radius: 3px; padding: 3px 6px; overflow: hidden;
-    font-size: 12.5px; font-weight: 700; line-height: 1.25; cursor: pointer; border: 1px solid; white-space: nowrap; text-overflow: ellipsis;
-  }
-  .tl-task.easy { background: #DCE6D4; color: var(--accent-dark); border-color: #B9CBAE; }
-  .tl-task.pro { background: #EEDFB8; color: #5E4B1C; border-color: #D9C189; }
-  .tl-task.done { background: #EFEDE7; color: var(--sub); border-color: #DCD6C8; text-decoration: line-through; }
-  .tl-task.outside { box-shadow: 0 0 0 2px var(--danger); }
-  .tl-task .tm { display: block; font-size: 11px; font-weight: 600; opacity: .85; }
-  .tl-task .ctl { position: absolute; top: 1px; right: 2px; display: flex; gap: 1px; background: inherit; }
-  .tl-task .ctl button { border: none; background: none; cursor: pointer; font-size: 11px; padding: 0 2px; color: inherit; }
-  .tl-axis .tl-track { min-height: 22px; }
-  .tl-axis .tl-track span { position: absolute; top: 2px; transform: translateX(-50%); font-size: 11.5px; color: var(--sub); font-weight: 700; }
-  .tl-count .tl-track { min-height: 34px; display: flex; }
-  .tl-count .slot { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border-right: 1px solid rgba(255,255,255,0.6); }
-  .tl-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--sub); font-weight: 600; margin-top: 10px; }
-  .tl-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(0,0,0,0.08); }
+  /* 주간 보드 (월~일 칸) */
+  .wk { display: grid; grid-template-columns: repeat(7, minmax(150px, 1fr)); gap: 8px; min-width: 1100px; }
+  .wk-col { border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; display: flex; flex-direction: column; }
+  .wk-col.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .wk-head { padding: 9px 9px 8px; background: var(--good-bg); border-bottom: 1px solid var(--border); }
+  .wk-col.today .wk-head { background: var(--accent-light); }
+  .wk-head .d { font-size: 17px; font-weight: 800; }
+  .wk-head .d small { font-size: 12px; font-weight: 600; color: var(--sub); margin-left: 3px; }
+  .wk-head .st { font-size: 11.5px; color: var(--sub); font-weight: 600; margin-top: 2px; line-height: 1.4; }
+  .wk-head .cnt { font-size: 12.5px; font-weight: 800; color: var(--accent-dark); margin-top: 6px; }
+  .wk-bar { display: flex; height: 18px; margin-top: 4px; border-radius: 2px; overflow: hidden; }
+  .wk-bar div { flex: 1; font-size: 10.5px; font-weight: 800; display: flex; align-items: center; justify-content: center; border-right: 1px solid rgba(255,255,255,0.7); }
+  .wk-bar-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--sub); font-weight: 600; margin-top: 1px; }
+  .wk-person { padding: 8px 8px 6px; border-bottom: 1px solid var(--border); }
+  .wk-person:last-child { border-bottom: none; }
+  .wk-person.click { cursor: copy; }
+  .wk-person.click:hover { background: var(--good-bg); }
+  .wk-person.off { background: #F6F5F1; }
+  .wk-person .nm { font-weight: 800; font-size: 13.5px; display: flex; align-items: baseline; justify-content: space-between; gap: 4px; margin-bottom: 5px; }
+  .wk-person .sh { font-size: 11.5px; font-weight: 600; color: var(--sub); white-space: nowrap; }
+  .wk-person .sh.edit { cursor: pointer; color: var(--accent-dark); text-decoration: underline dotted; }
+  .wk-person .foot { font-size: 11.5px; font-weight: 700; color: var(--sub); margin-top: 3px; }
+  .wk-person .foot.over { color: var(--danger); }
+  .wk-off-list { padding: 6px 8px; font-size: 12px; color: var(--sub); font-weight: 600; margin-top: auto; border-top: 1px dashed var(--border); }
+  .wk-off-list span { cursor: default; }
+  .wk-off-list span.click { cursor: copy; text-decoration: underline dotted; }
+  .wk-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--sub); font-weight: 600; margin-top: 10px; }
+  .wk-legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; border: 1px solid rgba(0,0,0,0.08); }
   .shift-input { width: 96px; padding: 5px 6px; font-size: 13.5px; text-align: center; }
   .shift-input.off { background: #EFEDE7; }
 
@@ -362,9 +348,8 @@
           <button class="link" onclick="goScheduleThisWeek()">이번 주</button>
         </div>
       </div>
-      <div id="sched-days" class="sched-days"></div>
-      <div id="sched-admin-tools" style="display:none">
-        <div class="hint" style="margin:0 0 10px">① 아래에서 작업을 고르고 ② 시간표에서 사람 줄의 <b>시작할 시간 위치</b>를 누르면 그 시간에 배정돼요 (30분 단위).<br>작업 블록의 ✕를 누르면 빠지고, 🕘를 누르면 시작 시간을 바꿀 수 있어요. 이름 옆 근무시간을 누르면 <b>이번 주 그날만</b> 근무시간을 바꿀 수 있어요.</div>
+      <div id="sched-admin-tools" style="display:none; margin-top:14px">
+        <div class="hint" style="margin:0 0 10px">① 아래에서 작업을 고르고 ② 요일 칸 안의 <b>사람 이름 칸</b>을 누르면 그날 할 일로 들어가요. 같은 작업을 여러 번 눌러도 돼요.<br>작업의 ✕를 누르면 빠지고, 이름 옆 근무시간을 누르면 <b>이번 주 그날만</b> 근무시간을 바꿀 수 있어요.</div>
         <div id="sched-palette" class="sched-palette"></div>
         <div class="field-row" style="margin:12px 0 0; gap:6px">
           <button class="secondary" onclick="copyPrevWeekSchedule()">지난주 그대로 복사</button>
@@ -372,7 +357,7 @@
           <button class="secondary" onclick="printSchedule()">🖨 주간 인쇄</button>
         </div>
       </div>
-      <div id="sched-timeline" style="overflow-x:auto; margin-top:16px"></div>
+      <div id="sched-week" style="overflow-x:auto; margin-top:16px"></div>
     </div>
 
     <div class="card" id="sched-needs-card">
@@ -970,7 +955,6 @@ let recipeBookReady = true;    // recipes에 steps/oven/photo 컬럼이 있는�
 let schedReady = true;         // 스케줄 테이블이 있는지 (13번 SQL)
 let schedTasks = [];
 let schedStaffHours = [];      // {employeeId, day, start, end} — 기본 근무시간 (분 단위, null = 휴무)
-let schedDay = null;           // 시간표에서 보고 있는 요일 (0=월)
 let schedWeekCache = {};       // weekStart -> { assignments: [...], weekHours: [...] }
 let schedWeekStart = null;     // 지금 보고 있는 주의 월요일 (YYYY-MM-DD)
 let schedSelectedTaskId = null;
@@ -2140,7 +2124,7 @@ async function ensureScheduleWeek(weekStart, force) {
   ]);
   if (aRes.error) { toast('스케줄을 불러오지 못했어요: ' + aRes.error.message); return null; }
   schedWeekCache[weekStart] = {
-    assignments: (aRes.data || []).map(r => ({ id: r.id, day: r.day, employeeId: r.employee_id, taskId: r.task_id, batches: r.batches, done: r.done, start: r.start_min ?? null })),
+    assignments: (aRes.data || []).map(r => ({ id: r.id, day: r.day, employeeId: r.employee_id, taskId: r.task_id, batches: r.batches, done: r.done })),
     weekHours: (hRes.data || []).map(r => ({ employeeId: r.employee_id, day: r.day, start: r.start_min ?? null, end: r.end_min ?? null }))
   };
   return schedWeekCache[weekStart];
@@ -2186,22 +2170,12 @@ function assignmentBatches(a) {
   return a.batches ?? t?.batches ?? 1;
 }
 
-// 작업 블록 위치: 시작 시간을 정한 작업은 그 시간에, 안 정한 작업은 근무 시작부터 차례로
-function placedTasks(week, employeeId, day) {
-  const shift = schedShift(week, employeeId, day);
-  const list = week.assignments
+// 그날 그 사람의 할 일 (넣은 순서대로)
+function dayTasks(week, employeeId, day) {
+  return week.assignments
     .filter(a => a.employeeId === employeeId && a.day === day)
-    .map((a, idx) => ({ a, t: schedTasks.find(tk => tk.id === a.taskId), idx }))
-    .filter(x => x.t)
-    .sort((x, y) => (x.a.start ?? Infinity) - (y.a.start ?? Infinity) || x.idx - y.idx);
-  let cursor = shift ? shift.start : 9 * 60;
-  return list.map(x => {
-    const dur = Math.max(10, Number(x.t.minutes) || 30);
-    const start = x.a.start ?? cursor;
-    cursor = Math.max(cursor, start + dur);
-    const outside = !shift || start < shift.start || start + dur > shift.end;
-    return { ...x, start, end: start + dur, outside };
-  });
+    .map(a => ({ a, t: schedTasks.find(tk => tk.id === a.taskId) }))
+    .filter(x => x.t);
 }
 
 function schedulePlanFor(assignments) {
@@ -2226,7 +2200,6 @@ function todayIndex() { return (new Date().getDay() + 6) % 7; }
 
 async function renderSchedule() {
   if (!schedWeekStart) schedWeekStart = mondayOf(todayStr());
-  if (schedDay == null) schedDay = todayIndex();
   document.getElementById('sched-setup-warning').style.display = schedReady ? 'none' : 'block';
   document.getElementById('sched-needs-card').style.display = adminMode ? 'block' : 'none';
   document.getElementById('sched-week-label').textContent = `${shortDate(schedWeekStart)} ~ ${shortDate(addDays(schedWeekStart, 6))}`;
@@ -2238,7 +2211,7 @@ async function renderSchedule() {
     populateScheduleTaskRecipeSelect();
   }
   if (!schedReady) {
-    ['sched-days', 'sched-timeline', 'sched-needs'].forEach(id => { document.getElementById(id).innerHTML = ''; });
+    ['sched-week', 'sched-needs'].forEach(id => { document.getElementById(id).innerHTML = ''; });
     document.getElementById('sched-today').innerHTML = '<div class="empty">스케줄 준비가 필요해요.</div>';
     return;
   }
@@ -2247,8 +2220,7 @@ async function renderSchedule() {
     ensureScheduleWeek(mondayOf(todayStr()))
   ]);
   if (!week || !thisWeek) return;
-  renderScheduleDays(week);
-  renderScheduleTimeline(week);
+  renderScheduleWeek(week);
   renderScheduleToday(thisWeek);
   if (adminMode) renderNeedsTable('sched-needs', schedulePlanFor(week.assignments));
 }
@@ -2259,11 +2231,6 @@ function shiftScheduleWeek(n) {
 }
 function goScheduleThisWeek() {
   schedWeekStart = mondayOf(todayStr());
-  schedDay = todayIndex();
-  renderSchedule();
-}
-function selectScheduleDay(day) {
-  schedDay = day;
   renderSchedule();
 }
 
@@ -2286,112 +2253,85 @@ function selectScheduleTask(id) {
   renderSchedulePalette();
 }
 
-function renderScheduleDays(week) {
-  const isThisWeek = schedWeekStart === mondayOf(todayStr());
-  document.getElementById('sched-days').innerHTML = DAY_NAMES.map((d, i) => {
-    const shifts = employees.map(e => schedShift(week, e.id, i)).filter(Boolean);
-    const sub = shifts.length
-      ? `${shifts.length}명 · ${shortShift({ start: Math.min(...shifts.map(s => s.start)), end: Math.max(...shifts.map(s => s.end)) })}`
-      : '쉬는 날';
-    return `<button class="sched-day ${i === schedDay ? 'active' : ''} ${isThisWeek && i === todayIndex() ? 'today' : ''}" onclick="selectScheduleDay(${i})">
-      <div class="d">${d} <span style="font-size:12px; font-weight:600">${shortDate(addDays(schedWeekStart, i))}</span></div>
-      <div class="sub">${sub}</div>
-    </button>`;
-  }).join('');
+const COUNT_COLORS = ['#F3F2EE', '#E3EBDC', '#C5D6BA', '#9DB894', '#6B8A63', '#4F6849'];
+
+// 그날 시간대별(1시간) 같이 일하는 인원 막대
+function headcountBar(shifts) {
+  if (!shifts.length) return '';
+  const start = Math.floor(Math.min(...shifts.map(s => s.start)) / 60) * 60;
+  const end = Math.ceil(Math.max(...shifts.map(s => s.end)) / 60) * 60;
+  let cells = '';
+  for (let m = start; m < end; m += 60) {
+    const n = shifts.filter(s => s.start < m + 60 && s.end > m).length;
+    cells += `<div style="background:${COUNT_COLORS[Math.min(n, COUNT_COLORS.length - 1)]}; color:${n >= 4 ? '#fff' : 'var(--accent-dark)'}" title="${m / 60}시~${m / 60 + 1}시 · ${n}명">${n || ''}</div>`;
+  }
+  return `<div class="wk-bar">${cells}</div><div class="wk-bar-axis"><span>${start / 60}시</span><span>${end / 60}시</span></div>`;
 }
 
-const COUNT_COLORS = ['#F3F2EE', '#E3EBDC', '#C5D6BA', '#9DB894', '#6B8A63', '#4F6849'];
-let schedRange = { start: 8 * 60, end: 20 * 60 };
+function taskChip(a, t) {
+  const bt = t.recipeId ? `<span class="bt" ${adminMode ? `onclick="event.stopPropagation(); editAssignmentBatches('${a.id}')" title="배합 수 바꾸기"` : ''}>${fmtQty(assignmentBatches(a))}배합</span>` : '';
+  return `<div class="sched-chip ${a.done ? 'done' : t.level}" onclick="event.stopPropagation(); toggleAssignmentDone('${a.id}')" title="${escapeHtml(t.memo || '눌러서 완료 체크')}">
+    <span>${a.done ? '✓ ' : ''}${escapeHtml(t.name)}</span>${bt}
+    ${adminMode ? `<button class="x" onclick="event.stopPropagation(); removeAssignment('${a.id}')" title="빼기">✕</button>` : ''}
+  </div>`;
+}
 
-function renderScheduleTimeline(week) {
-  const el = document.getElementById('sched-timeline');
+function renderScheduleWeek(week) {
+  const el = document.getElementById('sched-week');
   if (employees.length === 0) {
     el.innerHTML = '<div class="empty">업무일지 탭의 "직원 관리"에서 직원을 먼저 등록해주세요.</div>';
     return;
   }
-  const day = schedDay;
-  const rows = employees.map(emp => ({ emp, shift: schedShift(week, emp.id, day), tasks: placedTasks(week, emp.id, day) }));
+  const todayIdx = schedWeekStart === mondayOf(todayStr()) ? todayIndex() : -1;
+  const cols = DAY_NAMES.map((d, day) => {
+    const people = employees.map(emp => ({ emp, shift: schedShift(week, emp.id, day), tasks: dayTasks(week, emp.id, day) }));
+    const working = people.filter(p => p.shift || p.tasks.length);
+    const off = people.filter(p => !p.shift && !p.tasks.length);
+    const shifts = people.map(p => p.shift).filter(Boolean);
+    const open = cafes.filter(c => !(c.closedDays || []).includes(day)).map(c => escapeHtml(c.name));
 
-  // 보여줄 시간 범위: 그날 근무·작업이 있는 시간 앞뒤로 정각까지 (없으면 8~20시)
-  const points = rows.flatMap(r => [...(r.shift ? [r.shift.start, r.shift.end] : []), ...r.tasks.flatMap(t => [t.start, t.end])]);
-  const R0 = points.length ? Math.max(0, Math.floor(Math.min(...points) / 60) * 60) : 8 * 60;
-  const R1 = points.length ? Math.min(24 * 60, Math.ceil(Math.max(...points) / 60) * 60) : 20 * 60;
-  schedRange = { start: R0, end: Math.max(R1, R0 + 120) };
-  const span = schedRange.end - schedRange.start;
-  const pct = m => ((m - schedRange.start) / span * 100).toFixed(3) + '%';
+    const blocks = working.map(({ emp, shift, tasks }) => {
+      const min = tasks.reduce((s, x) => s + (Number(x.t.minutes) || 0), 0);
+      const hours = shift ? (shift.end - shift.start) / 60 : 0;
+      const shLabel = adminMode
+        ? `<span class="sh edit" onclick="event.stopPropagation(); editDayShift('${emp.id}', ${day})" title="이번 주 이날만 바꾸기">${shortShift(shift)}${shift && shift.override ? '*' : ''}</span>`
+        : `<span class="sh">${shortShift(shift)}</span>`;
+      return `<div class="wk-person ${shift ? '' : 'off'} ${adminMode ? 'click' : ''}" ${adminMode ? `onclick="addAssignment('${emp.id}', ${day})"` : ''}>
+        <div class="nm"><span>${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}</span>${shLabel}</div>
+        ${tasks.map(({ a, t }) => taskChip(a, t)).join('')}
+        ${tasks.length || adminMode ? `<div class="foot ${min > hours * 60 ? 'over' : ''}">${tasks.length ? `작업 ${fmtQty(min / 60)}h / 근무 ${fmtQty(hours)}h` : '눌러서 작업 추가'}</div>` : ''}
+      </div>`;
+    }).join('');
 
-  let grid = '', axis = '';
-  for (let m = schedRange.start; m <= schedRange.end; m += 30) {
-    grid += `<span class="${m % 60 ? '' : 'hr'}" style="left:${pct(m)}"></span>`;
-    if (m % 60 === 0) axis += `<span style="left:${pct(m)}">${m / 60}시</span>`;
-  }
+    const offList = off.length ? `<div class="wk-off-list">휴무: ${off.map(({ emp }) => adminMode
+      ? `<span class="click" onclick="addAssignment('${emp.id}', ${day})" title="휴무지만 작업 넣기">${escapeHtml(emp.name)}</span>`
+      : `<span>${escapeHtml(emp.name)}</span>`).join(', ')}</div>` : '';
 
-  // 30분마다 같이 일하는 인원
-  let slots = '';
-  for (let m = schedRange.start; m < schedRange.end; m += 30) {
-    const n = rows.filter(r => r.shift && r.shift.start <= m && r.shift.end >= m + 30).length;
-    const bg = COUNT_COLORS[Math.min(n, COUNT_COLORS.length - 1)];
-    slots += `<div class="slot" style="background:${bg}; color:${n >= 4 ? '#fff' : 'var(--accent-dark)'}" title="${fmtTime(m)}~${fmtTime(m + 30)} · ${n}명">${n || ''}</div>`;
-  }
-
-  const open = cafes.filter(c => !(c.closedDays || []).includes(day)).map(c => escapeHtml(c.name));
-  const personRows = rows.map(({ emp, shift, tasks }) => {
-    const shiftLabel = adminMode
-      ? `<div class="sh edit" onclick="editDayShift('${emp.id}')" title="이번 주 ${DAY_NAMES[day]}요일만 바꾸기">${fmtShift(shift)}${shift && shift.override ? ' *' : ''}</div>`
-      : `<div class="sh">${fmtShift(shift)}</div>`;
-    const blocks = tasks.map(({ a, t, start, end, outside }) => `
-      <div class="tl-task ${a.done ? 'done' : t.level} ${outside && !a.done ? 'outside' : ''}"
-        style="left:${pct(start)}; width:calc(${pct(end)} - ${pct(start)} - 2px)"
-        onclick="event.stopPropagation(); toggleAssignmentDone('${a.id}')"
-        title="${escapeHtml(`${fmtTime(start)}~${fmtTime(end)} ${t.name}${t.recipeId ? ` (${fmtQty(assignmentBatches(a))}배합)` : ''}${t.memo ? '\n' + t.memo : ''}${outside ? '\n⚠ 근무시간 밖이에요' : ''}\n눌러서 완료 체크`)}">
-        ${a.done ? '✓ ' : ''}${escapeHtml(t.name)}${t.recipeId ? ` · ${fmtQty(assignmentBatches(a))}배합` : ''}
-        <span class="tm">${fmtTime(start)}~${fmtTime(end)}</span>
-        ${adminMode ? `<span class="ctl">
-          ${t.recipeId ? `<button onclick="event.stopPropagation(); editAssignmentBatches('${a.id}')" title="배합 수">⚖</button>` : ''}
-          <button onclick="event.stopPropagation(); editAssignmentStart('${a.id}')" title="시작 시간">🕘</button>
-          <button onclick="event.stopPropagation(); removeAssignment('${a.id}')" title="빼기">✕</button>
-        </span>` : ''}
-      </div>`).join('');
-    return `<div class="tl-row">
-      <div class="tl-label"><div class="nm">${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}</div>${shiftLabel}</div>
-      <div class="tl-track ${adminMode ? 'click' : ''}" ${adminMode ? `onclick="onTimelineClick(event, '${emp.id}')"` : ''}>
-        <div class="tl-grid">${grid}</div>
-        ${shift ? `<div class="tl-shift" style="left:${pct(shift.start)}; width:calc(${pct(shift.end)} - ${pct(shift.start)})"></div>` : '<div class="tl-off">휴무</div>'}
-        ${blocks}
+    return `<div class="wk-col ${day === todayIdx ? 'today' : ''}">
+      <div class="wk-head">
+        <div class="d">${d}<small>${shortDate(addDays(schedWeekStart, day))}${day === todayIdx ? ' · 오늘' : ''}</small></div>
+        ${cafes.length ? `<div class="st">출고: ${open.length ? open.join('·') : '없음'}</div>` : ''}
+        <div class="cnt">${shifts.length ? `${shifts.length}명 출근` : '쉬는 날'}</div>
+        ${headcountBar(shifts)}
       </div>
+      ${blocks}${offList}
     </div>`;
   }).join('');
 
-  el.innerHTML = `
-    <div style="font-size:14px; font-weight:700; margin-bottom:8px">${DAY_NAMES[day]}요일 ${shortDate(addDays(schedWeekStart, day))}
-      ${cafes.length ? `<span style="color:var(--sub); font-weight:600; margin-left:8px">출고: ${open.length ? open.join(' · ') : '없음'}</span>` : ''}</div>
-    <div class="tl">
-      <div class="tl-row tl-axis"><div class="tl-label"></div><div class="tl-track">${axis}</div></div>
-      <div class="tl-row tl-count"><div class="tl-label"><div class="nm" style="font-size:13px">같이 일하는 인원</div><div class="sh">30분 단위</div></div><div class="tl-track">${slots}</div></div>
-      ${personRows}
-    </div>
-    <div class="tl-legend">
-      <span><i style="background:var(--accent-light)"></i>근무시간</span>
-      <span><i style="background:#DCE6D4"></i>쉬움</span>
-      <span><i style="background:#EEDFB8"></i>숙련</span>
+  el.innerHTML = `<div class="wk">${cols}</div>
+    <div class="wk-legend">
+      <span><i style="background:var(--accent-light)"></i>쉬움</span>
+      <span><i style="background:#F3ECD9"></i>숙련</span>
       <span><i style="background:#EFEDE7"></i>완료</span>
-      <span><i style="background:#fff; box-shadow:0 0 0 2px var(--danger)"></i>근무시간 밖</span>
-      <span>인원: ${COUNT_COLORS.slice(1).map((c, i) => `<i style="background:${c}"></i>${i + 1}${i === COUNT_COLORS.length - 2 ? '+' : ''}`).join(' ')}</span>
+      <span>막대 = 시간대별 같이 일하는 인원: ${COUNT_COLORS.slice(1).map((c, i) => `<i style="background:${c}"></i>${i + 1}${i === COUNT_COLORS.length - 2 ? '+' : ''}`).join(' ')}</span>
     </div>`;
-}
-
-function onTimelineClick(event, employeeId) {
-  const rect = event.currentTarget.getBoundingClientRect();
-  const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-  const minute = schedRange.start + ratio * (schedRange.end - schedRange.start);
-  addAssignment(employeeId, schedDay, Math.floor(minute / 30) * 30);
 }
 
 function renderScheduleToday(thisWeek) {
   const el = document.getElementById('sched-today');
   const todayIdx = todayIndex();
   document.getElementById('sched-today-label').textContent = `${shortDate(todayStr())} ${DAY_NAMES[todayIdx]}요일`;
-  const groups = employees.map(emp => ({ emp, shift: schedShift(thisWeek, emp.id, todayIdx), list: placedTasks(thisWeek, emp.id, todayIdx) }))
+  const groups = employees.map(emp => ({ emp, shift: schedShift(thisWeek, emp.id, todayIdx), list: dayTasks(thisWeek, emp.id, todayIdx) }))
     .filter(g => g.list.length);
   if (groups.length === 0) {
     el.innerHTML = '<div class="empty">오늘 배정된 작업이 없어요.</div>';
@@ -2403,13 +2343,13 @@ function renderScheduleToday(thisWeek) {
       <div class="who">${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}
         <span style="font-size:13px; color:var(--sub); font-weight:600; margin-left:4px">${fmtShift(shift)}</span>
         <span class="badge">${doneCount}/${list.length}</span></div>
-      ${list.map(({ a, t, start, end }) => `
+      ${list.map(({ a, t }) => `
         <div class="sched-today-item ${a.done ? 'done' : ''}" onclick="toggleAssignmentDone('${a.id}')">
           <span class="box">${a.done ? '✓' : ''}</span>
-          <span style="font-size:13px; color:var(--sub); min-width:96px">${fmtTime(start)}~${fmtTime(end)}</span>
           <span style="flex:1">${escapeHtml(t.name)}${t.recipeId ? ` · ${fmtQty(assignmentBatches(a))}배합` : ''}
             ${t.memo ? `<div style="font-size:12.5px; color:var(--sub); font-weight:500">${escapeHtml(t.memo)}</div>` : ''}</span>
           <span class="lv ${t.level}">${levelLabel(t.level)}</span>
+          <span style="font-size:12.5px; color:var(--sub)">${fmtMinutes(t.minutes)}</span>
         </div>`).join('')}
     </div>`;
   }).join('');
@@ -2423,14 +2363,14 @@ function findAssignment(id) {
   return null;
 }
 
-async function addAssignment(employeeId, day, start) {
+async function addAssignment(employeeId, day) {
   if (!schedSelectedTaskId) { toast('위에서 작업을 먼저 골라주세요.'); return; }
   const t = schedTasks.find(tk => tk.id === schedSelectedTaskId);
   const { data, error } = await sb.from('schedule_assignments').insert({
-    week_start: schedWeekStart, day, employee_id: employeeId, task_id: t.id, batches: t.batches ?? null, start_min: start ?? null
+    week_start: schedWeekStart, day, employee_id: employeeId, task_id: t.id, batches: t.batches ?? null
   }).select().single();
   if (error) { toast('배정 실패: ' + error.message); return; }
-  schedWeekCache[schedWeekStart].assignments.push({ id: data.id, day, employeeId, taskId: t.id, batches: data.batches, done: false, start: data.start_min ?? null });
+  schedWeekCache[schedWeekStart].assignments.push({ id: data.id, day, employeeId, taskId: t.id, batches: data.batches, done: false });
   renderSchedule();
 }
 
@@ -2464,49 +2404,34 @@ async function editAssignmentBatches(id) {
   renderSchedule();
 }
 
-async function editAssignmentStart(id) {
-  const a = findAssignment(id);
-  if (!a) return;
-  const week = schedWeekCache[schedWeekStart];
-  const cur = placedTasks(week, a.employeeId, a.day).find(x => x.a.id === id);
-  const input = prompt('시작 시간을 입력하세요 (예: 9:30, 14)', cur ? fmtTime(cur.start) : '');
-  if (input === null) return;
-  const start = parseTime(input);
-  if (start == null) { toast('시간을 9:30 처럼 입력해주세요.'); return; }
-  const { error } = await sb.from('schedule_assignments').update({ start_min: start }).eq('id', id);
-  if (error) { toast('저장 실패: ' + error.message); return; }
-  a.start = start;
-  renderSchedule();
-}
-
 // 이번 주 그날만 근무시간 바꾸기
-async function editDayShift(employeeId) {
+async function editDayShift(employeeId, day) {
   const week = schedWeekCache[schedWeekStart];
   const emp = employees.find(e => e.id === employeeId);
-  const cur = schedShift(week, employeeId, schedDay);
+  const cur = schedShift(week, employeeId, day);
   const input = prompt(
-    `${emp ? emp.name : ''} · 이번 주 ${DAY_NAMES[schedDay]}요일 근무시간\n9-18 처럼 입력하세요. 비우면 휴무, "기본"이라고 쓰면 기본 근무시간으로 돌아가요.`,
+    `${emp ? emp.name : ''} · 이번 주 ${DAY_NAMES[day]}요일 근무시간\n9-18 처럼 입력하세요. 비우면 휴무, "기본"이라고 쓰면 기본 근무시간으로 돌아가요.`,
     cur ? shortShift(cur) : ''
   );
   if (input === null) return;
   if (input.trim() === '기본') {
     const { error } = await sb.from('schedule_week_hours').delete()
-      .eq('week_start', schedWeekStart).eq('employee_id', employeeId).eq('day', schedDay);
+      .eq('week_start', schedWeekStart).eq('employee_id', employeeId).eq('day', day);
     if (error) { toast('저장 실패: ' + error.message); return; }
-    week.weekHours = week.weekHours.filter(h => !(h.employeeId === employeeId && h.day === schedDay));
+    week.weekHours = week.weekHours.filter(h => !(h.employeeId === employeeId && h.day === day));
     renderSchedule();
     return;
   }
   const shift = parseShift(input);
   if (shift === undefined) { toast('9-18 또는 8:30-17 처럼 입력해주세요.'); return; }
   const row = {
-    week_start: schedWeekStart, employee_id: employeeId, day: schedDay,
+    week_start: schedWeekStart, employee_id: employeeId, day,
     start_min: shift ? shift.start : null, end_min: shift ? shift.end : null, hours: shift ? (shift.end - shift.start) / 60 : 0
   };
   const { error } = await sb.from('schedule_week_hours').upsert(row);
   if (error) { toast('저장 실패: ' + error.message); return; }
-  week.weekHours = week.weekHours.filter(h => !(h.employeeId === employeeId && h.day === schedDay));
-  week.weekHours.push({ employeeId, day: schedDay, start: row.start_min, end: row.end_min });
+  week.weekHours = week.weekHours.filter(h => !(h.employeeId === employeeId && h.day === day));
+  week.weekHours.push({ employeeId, day, start: row.start_min, end: row.end_min });
   renderSchedule();
 }
 
@@ -2520,7 +2445,7 @@ async function copyPrevWeekSchedule() {
   await sb.from('schedule_assignments').delete().eq('week_start', schedWeekStart);
   await sb.from('schedule_week_hours').delete().eq('week_start', schedWeekStart);
   const { error } = await sb.from('schedule_assignments').insert(prev.assignments.map(a => ({
-    week_start: schedWeekStart, day: a.day, employee_id: a.employeeId, task_id: a.taskId, batches: a.batches ?? null, start_min: a.start ?? null
+    week_start: schedWeekStart, day: a.day, employee_id: a.employeeId, task_id: a.taskId, batches: a.batches ?? null
   })));
   if (error) { toast('복사 실패: ' + error.message); return; }
   if (prev.weekHours.length) {
@@ -2544,29 +2469,28 @@ async function clearWeekSchedule() {
   renderSchedule();
 }
 
-// 주간 인쇄: 요일별로 사람마다 근무시간과 시간순 작업 목록
+// 주간 인쇄: 월~일 칸에 사람별 근무시간과 할 일 체크리스트
 function printSchedule() {
   const week = schedWeekCache[schedWeekStart];
   if (!week) return;
-  const days = DAY_NAMES.map((d, day) => {
+  const cols = DAY_NAMES.map((d, day) => {
     const people = employees.map(emp => {
       const shift = schedShift(week, emp.id, day);
-      const tasks = placedTasks(week, emp.id, day);
+      const tasks = dayTasks(week, emp.id, day);
       if (!shift && !tasks.length) return '';
-      return `<tr><td class="who">${escapeHtml(emp.name)}<br><small>${fmtShift(shift)}</small></td>
-        <td>${tasks.map(({ a, t, start, end }) => `<div>☐ ${fmtTime(start)}~${fmtTime(end)} ${escapeHtml(t.name)}${t.recipeId ? ` (${fmtQty(assignmentBatches(a))}배합)` : ''}</div>`).join('') || '-'}</td></tr>`;
+      return `<div class="p"><b>${escapeHtml(emp.name)}</b> <small>${shortShift(shift)}</small>
+        ${tasks.map(({ a, t }) => `<div>☐ ${escapeHtml(t.name)}${t.recipeId ? ` (${fmtQty(assignmentBatches(a))}배합)` : ''}</div>`).join('')}</div>`;
     }).join('');
-    return `<section><h3>${d}요일 ${shortDate(addDays(schedWeekStart, day))}</h3>${people ? `<table>${people}</table>` : '<p>쉬는 날</p>'}</section>`;
+    return `<div class="c"><h3>${d} <small>${shortDate(addDays(schedWeekStart, day))}</small></h3>${people || '<p>쉬는 날</p>'}</div>`;
   }).join('');
   const w = window.open('', '_blank');
   if (!w) { toast('팝업이 막혀있어요. 팝업을 허용해주세요.'); return; }
   w.document.write(`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>주간 스케줄 ${schedWeekStart}</title>
-    <style>body{font-family:"Malgun Gothic",sans-serif; padding:10px; font-size:12px; color:#222}
-    h2{margin:0 0 10px} .grid{display:grid; grid-template-columns:repeat(2,1fr); gap:10px}
-    section{border:1px solid #ccc; padding:6px 8px; break-inside:avoid} h3{margin:0 0 6px; font-size:14px}
-    table{width:100%; border-collapse:collapse} td{border-top:1px solid #eee; padding:4px; vertical-align:top} td.who{width:90px; font-weight:bold}
-    small{font-weight:normal; color:#666} p{margin:0; color:#888} @page{size:A4; margin:8mm}</style></head>
-    <body><h2>주간 스케줄 ${shortDate(schedWeekStart)} ~ ${shortDate(addDays(schedWeekStart, 6))}</h2><div class="grid">${days}</div></body></html>`);
+    <style>body{font-family:"Malgun Gothic",sans-serif; padding:8px; font-size:11.5px; color:#222}
+    h2{margin:0 0 8px} .g{display:grid; grid-template-columns:repeat(7,1fr); gap:5px}
+    .c{border:1px solid #bbb; padding:5px} h3{margin:0 0 5px; font-size:14px; border-bottom:1px solid #ddd; padding-bottom:3px}
+    .p{margin-bottom:7px} small{font-weight:normal; color:#666} p{margin:0; color:#888} @page{size:A4 landscape; margin:7mm}</style></head>
+    <body><h2>주간 스케줄 ${shortDate(schedWeekStart)} ~ ${shortDate(addDays(schedWeekStart, 6))}</h2><div class="g">${cols}</div></body></html>`);
   w.document.close();
   w.focus();
   setTimeout(() => w.print(), 300);
