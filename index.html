@@ -212,6 +212,7 @@
   .lv { font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 700; white-space: nowrap; }
   .lv.easy { background: var(--accent-light); color: var(--accent-dark); }
   .lv.pro { background: #F6C9A6; color: #7A3510; }
+  .lv.expert { background: #8E2F12; color: #fff; }
   .sched-table { min-width: 1040px; table-layout: fixed; font-size: 14px; }
   .sched-table th, .sched-table td { border: 1px solid var(--border); padding: 8px 7px; vertical-align: top; }
   /* 요일·이름 칸은 진하게 (작업 칸과 구분) */
@@ -234,6 +235,26 @@
   }
   .sched-chip.easy { background: var(--accent-light); color: var(--accent-dark); border-color: #F5C8A4; }
   .sched-chip.pro { background: #F6C9A6; color: #7A3510; border-color: #E9A877; }
+  .sched-chip.expert { background: #8E2F12; color: #fff; border-color: #6E220C; }
+  .sched-chip.expert .bt { color: #8E2F12; }
+  /* 작업 목록: 난이도별 펼치기/접기 */
+  .lv-group { margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; }
+  .lv-group summary { cursor: pointer; padding: 8px 10px; font-weight: 800; font-size: 13.5px; display: flex; align-items: center; gap: 6px; list-style: none; }
+  .lv-group summary::-webkit-details-marker { display: none; }
+  .lv-group summary::before { content: '▸'; font-size: 11px; color: var(--sub); transition: transform .15s; }
+  .lv-group[open] summary::before { transform: rotate(90deg); }
+  .lv-group summary .cnt { margin-left: auto; font-size: 12px; color: var(--sub); }
+  .lv-group .items { padding: 0 6px 6px; }
+  .sched-side .lv-group .sched-pick { margin-bottom: 5px; }
+  /* 직원 색 */
+  .emp-dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #fff; vertical-align: -2px; box-shadow: 0 0 0 1px rgba(0,0,0,0.15); }
+  .emp-dot.pick { cursor: pointer; }
+  .color-pop { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; padding: 6px; background: #fff; border-radius: 4px; }
+  .color-pop button { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.2); cursor: pointer; padding: 0; }
+  .color-pop button.on { box-shadow: 0 0 0 3px var(--text); }
+  /* 이번 주 필요 재료 체크리스트 */
+  .need-row td { vertical-align: middle; }
+  .need-check { width: 22px; height: 22px; accent-color: var(--accent); cursor: pointer; }
   .sched-chip.done { background: #EFE8E1; color: var(--sub); border-color: #DDD2C6; text-decoration: line-through; }
   .sched-chip .bt { font-size: 11px; font-weight: 700; padding: 0 4px; border-radius: 3px; background: rgba(255,255,255,0.7); white-space: nowrap; }
   .sched-chip .x { margin-left: auto; border: none; background: none; color: inherit; cursor: pointer; font-size: 12px; padding: 0 2px; }
@@ -419,6 +440,7 @@
             <select id="sched-task-level">
               <option value="easy">쉬움</option>
               <option value="pro">숙련</option>
+              <option value="expert">전문가</option>
             </select>
           </div>
           <div class="field" style="max-width:130px">
@@ -2350,10 +2372,13 @@ function isMissingTableError(error) {
 }
 
 async function loadScheduleBase() {
-  const [taskRes, hoursRes] = await Promise.all([
+  const [taskRes, hoursRes, colorRes] = await Promise.all([
     sb.from('schedule_tasks').select('*').order('created_at', { ascending: true }),
-    sb.from('schedule_staff_hours').select('*')
+    sb.from('schedule_staff_hours').select('*'),
+    sb.from('schedule_staff_colors').select('*')
   ]);
+  schedStaffColors = {};
+  (colorRes.data || []).forEach(r => { schedStaffColors[r.employee_id] = r.color; });
   if (isMissingTableError(taskRes.error)) { schedReady = false; return; }
   schedReady = true;
   schedTasks = (taskRes.data || []).map(r => ({ id: r.id, name: r.name, level: r.level, minutes: r.minutes, recipeId: r.recipe_id, batches: r.batches, memo: r.memo || '' }));
@@ -2436,7 +2461,102 @@ function schedulePlanFor(assignments) {
   return plan;
 }
 
-function levelLabel(level) { return level === 'pro' ? '숙련' : '쉬움'; }
+const LEVELS = [['easy', '쉬움'], ['pro', '숙련'], ['expert', '전문가']];
+
+// --- 이번 주 필요 재료 체크리스트 ---
+// 재고가 아직 정확하지 않아서, 실제로 확인한 재료는 체크해서 목록에서 지워요 (주마다 이 기기에 저장).
+let schedShowChecked = false;
+function needsCheckKey() { return 'somri-needs-check-' + schedWeekStart; }
+function loadNeedsChecked() {
+  try { return new Set(JSON.parse(localStorage.getItem(needsCheckKey()) || '[]')); } catch { return new Set(); }
+}
+function saveNeedsChecked(set) {
+  try { localStorage.setItem(needsCheckKey(), JSON.stringify([...set])); } catch {}
+}
+
+function renderScheduleNeeds(week) {
+  const el = document.getElementById('sched-needs');
+  const needs = calcIngredientNeeds(schedulePlanFor(week.assignments));
+  if (!needs.length) {
+    lastNeedsByEl['sched-needs'] = [];
+    el.innerHTML = '<div class="empty">이번 주 스케줄에 레시피가 연결된 작업이 없어요. (작업 목록에서 레시피를 연결하면 계산돼요)</div>';
+    return;
+  }
+  const checked = loadNeedsChecked();
+  const open = needs.filter(n => !checked.has(n.ing.id));
+  const done = needs.filter(n => checked.has(n.ing.id));
+  lastNeedsByEl['sched-needs'] = open;
+  const shortOpen = open.filter(n => n.packs > 0).length;
+  const enoughOpen = open.filter(n => n.packs === 0).length;
+  const shown = schedShowChecked ? [...open, ...done] : open;
+
+  const rows = shown.map(n => {
+    const u = escapeHtml(n.ing.purchaseUnit);
+    const sup = suppliers.find(s => s.id === n.ing.supplierId);
+    const isChecked = checked.has(n.ing.id);
+    return `<tr class="need-row" style="${isChecked ? 'opacity:.5' : ''}">
+      <td style="width:40px"><input type="checkbox" class="need-check" ${isChecked ? 'checked' : ''} onchange="toggleNeedCheck('${n.ing.id}', this.checked)" title="확인했으면 체크"></td>
+      <td><b>${escapeHtml(n.ing.name)}</b><div style="font-size:12px; color:var(--sub)">${n.uses.map(escapeHtml).join(', ')}</div></td>
+      <td class="num"><b>${fmtQty(n.need)}${u}</b></td>
+      <td class="num">${fmtQty(n.ing.stock ?? 0)}개 <span style="color:var(--sub); font-size:12.5px">(${fmtQty(n.stockBase)}${u})</span></td>
+      <td>${n.packs > 0 ? `<span class="warn">${fmtQty(n.short)}${u} 부족 → <span class="badge low">${n.packs}개 발주</span></span>` : '<span style="color:var(--accent-dark); font-weight:800">✅ 충분</span>'}</td>
+      <td>${sup ? escapeHtml(sup.name) : '<span style="color:var(--sub)">미지정</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="hint" style="margin:0 0 10px">${open.length
+      ? `확인할 재료 <b>${open.length}개</b>${shortOpen ? ` · <b style="color:var(--danger)">부족 ${shortOpen}개</b>` : ''}. 실제로 있는지 확인했거나 발주했으면 <b>체크</b>하세요. 체크하면 목록에서 사라져요.`
+      : '🎉 이번 주 재료 확인 끝! 재료가 없어서 작업 못 할 일은 없어요.'}</div>
+    <div class="field-row" style="gap:6px; margin-bottom:10px">
+      ${enoughOpen ? `<button class="secondary" onclick="checkAllEnoughNeeds()">✅ 충분한 것 모두 체크 (${enoughOpen})</button>` : ''}
+      ${done.length ? `<button class="secondary" onclick="schedShowChecked = !schedShowChecked; renderScheduleNeeds(schedWeekCache[schedWeekStart])">${schedShowChecked ? '체크한 것 숨기기' : `체크한 것 보기 (${done.length})`}</button>` : ''}
+      ${shortOpen ? `<button class="secondary" onclick="copyOrderText('sched-needs')">📋 부족한 것 발주 목록 복사</button>` : ''}
+    </div>
+    ${shown.length ? `<div style="overflow-x:auto"><table style="min-width:720px">
+      <thead><tr><th></th><th>재료</th><th class="num">필요량</th><th class="num">현재 재고</th><th>상태</th><th>거래처</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>` : ''}`;
+}
+
+function toggleNeedCheck(ingredientId, on) {
+  const set = loadNeedsChecked();
+  if (on) set.add(ingredientId); else set.delete(ingredientId);
+  saveNeedsChecked(set);
+  renderScheduleNeeds(schedWeekCache[schedWeekStart]);
+}
+
+function checkAllEnoughNeeds() {
+  const week = schedWeekCache[schedWeekStart];
+  const set = loadNeedsChecked();
+  calcIngredientNeeds(schedulePlanFor(week.assignments)).filter(n => n.packs === 0).forEach(n => set.add(n.ing.id));
+  saveNeedsChecked(set);
+  renderScheduleNeeds(week);
+}
+
+// --- 직원별 색 (스케줄 줄 색) ---
+const STAFF_COLORS = ['#E07A35', '#2F80ED', '#27AE60', '#9B51E0', '#EB5757', '#C9A227', '#1F9E9E', '#8D6E63', '#E05FA2', '#4B5563'];
+let schedStaffColors = {};      // employeeId -> color
+let schedColorPickFor = null;
+
+function empColor(employeeId) {
+  if (schedStaffColors[employeeId]) return schedStaffColors[employeeId];
+  const idx = Math.max(0, employees.findIndex(e => e.id === employeeId));
+  return STAFF_COLORS[idx % STAFF_COLORS.length];
+}
+
+function toggleColorPicker(employeeId) {
+  schedColorPickFor = schedColorPickFor === employeeId ? null : employeeId;
+  renderSchedule();
+}
+
+async function setStaffColor(employeeId, color) {
+  const { error } = await sb.from('schedule_staff_colors').upsert({ employee_id: employeeId, color });
+  if (error) { toast('저장 실패: ' + error.message); return; }
+  schedStaffColors[employeeId] = color;
+  schedColorPickFor = null;
+  renderSchedule();
+}
+function levelLabel(level) { return (LEVELS.find(l => l[0] === level) || LEVELS[0])[1]; }
 function fmtMinutes(min) {
   const h = Math.floor(min / 60), m = Math.round(min % 60);
   return h && m ? `${h}시간 ${m}분` : h ? `${h}시간` : `${m}분`;
@@ -2468,7 +2588,7 @@ async function renderSchedule() {
   if (!week || !thisWeek) return;
   renderScheduleWeek(week);
   renderScheduleToday(thisWeek);
-  if (adminMode) renderNeedsTable('sched-needs', schedulePlanFor(week.assignments));
+  if (adminMode) renderScheduleNeeds(week);
 }
 
 function shiftScheduleWeek(n) {
@@ -2486,12 +2606,24 @@ function renderSchedulePalette() {
     el.innerHTML = '<div class="empty" style="padding:8px 0">아래 "작업 목록"에서 작업을 먼저 등록해주세요.</div>';
     return;
   }
-  el.innerHTML = schedTasks.map(t => `
-    <button class="sched-pick ${t.id === schedSelectedTaskId ? 'selected' : ''}" onclick="selectScheduleTask('${t.id}')">
-      <span class="nm">${escapeHtml(t.name)}</span> <span class="lv ${t.level}">${levelLabel(t.level)}</span>
-      <span style="font-size:12px; color:var(--sub)">${fmtMinutes(t.minutes)}</span>
-    </button>
-  `).join('');
+  // 난이도별로 묶어서 펼치기/접기
+  el.innerHTML = LEVELS.map(([lv, label]) => {
+    const list = schedTasks.filter(t => (t.level || 'easy') === lv);
+    if (!list.length) return '';
+    return `<details class="lv-group" ${schedClosedLevels.has(lv) ? '' : 'open'} ontoggle="toggleLevelGroup('${lv}', this.open)">
+      <summary><span class="lv ${lv}">${label}</span><span class="cnt">${list.length}개</span></summary>
+      <div class="items">${list.map(t => `
+        <button class="sched-pick ${t.id === schedSelectedTaskId ? 'selected' : ''}" onclick="selectScheduleTask('${t.id}')">
+          <span class="nm">${escapeHtml(t.name)}</span>
+          <span style="font-size:12px; color:var(--sub)">${fmtMinutes(t.minutes)}</span>
+        </button>`).join('')}</div>
+    </details>`;
+  }).join('');
+}
+
+const schedClosedLevels = new Set();
+function toggleLevelGroup(lv, open) {
+  if (open) schedClosedLevels.delete(lv); else schedClosedLevels.add(lv);
 }
 
 function selectScheduleTask(id) {
@@ -2541,6 +2673,7 @@ function renderScheduleWeek(week) {
   const dayTotals = DAY_NAMES.map(() => ({ min: 0, people: 0 }));
   const rows = employees.map(emp => {
     let weekMin = 0, weekHours = 0;
+    const color = empColor(emp.id);
     const cells = DAY_NAMES.map((_, day) => {
       const shift = schedShift(week, emp.id, day);
       const tasks = dayTasks(week, emp.id, day);
@@ -2554,13 +2687,21 @@ function renderScheduleWeek(week) {
         ? `<span class="cell-shift" onclick="event.stopPropagation(); editDayShift('${emp.id}', ${day})" title="이번 주 이날만 바꾸기">${shiftText}</span>`
         : shiftText;
       return `<td class="sched-cell ${shift ? '' : 'off'} ${adminMode ? 'clickable' : ''} ${day === todayIdx ? 'today' : ''}"
+        style="border-left:5px solid ${color}; ${shift ? `background:${color}14;` : ''}"
         ${adminMode ? `onclick="addAssignment('${emp.id}', ${day})"` : ''}>
         ${tasks.map(({ a, t }) => taskChip(a, t)).join('')}
         <div class="sched-foot ${min > hours * 60 ? 'over' : ''}">${tasks.length ? `${fmtQty(min / 60)}h / ` : ''}${shiftHtml}</div>
       </td>`;
     }).join('');
-    return `<tr><th style="text-align:left; vertical-align:top">${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}
-      <span class="stores">작업 ${fmtQty(weekMin / 60)}h / 근무 ${fmtQty(weekHours)}h</span></th>${cells}</tr>`;
+    const picker = adminMode && schedColorPickFor === emp.id
+      ? `<div class="color-pop">${STAFF_COLORS.map(c => `<button type="button" class="${c === color ? 'on' : ''}" style="background:${c}" onclick="setStaffColor('${emp.id}', '${c}')" title="이 색으로"></button>`).join('')}</div>`
+      : '';
+    return `<tr><th style="text-align:left; vertical-align:top; background:${color}; border-color:${color}">
+      <span class="emp-dot ${adminMode ? 'pick' : ''}" style="background:${color}" ${adminMode ? `onclick="toggleColorPicker('${emp.id}')" title="색 바꾸기"` : ''}></span>
+      ${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}
+      <span class="stores">작업 ${fmtQty(weekMin / 60)}h / 근무 ${fmtQty(weekHours)}h</span>
+      ${adminMode && schedColorPickFor !== emp.id ? `<span class="stores" style="cursor:pointer; text-decoration:underline dotted" onclick="toggleColorPicker('${emp.id}')">🎨 색 고르기</span>` : ''}
+      ${picker}</th>${cells}</tr>`;
   }).join('');
 
   const totalRow = `<tr><th style="text-align:left">합계</th>${dayTotals.map(t =>
@@ -2574,6 +2715,8 @@ function renderScheduleWeek(week) {
   <div class="wk-legend">
     <span><i style="background:var(--accent-light)"></i>쉬움</span>
     <span><i style="background:#F6C9A6"></i>숙련</span>
+    <span><i style="background:#8E2F12"></i>전문가</span>
+    <span>이름 칸·왼쪽 줄 = 직원 색 (관리자는 🎨로 변경)</span>
     <span><i style="background:#EFE8E1"></i>완료·휴무</span>
     <span>칸 아래 = 작업시간 / 근무시간 (넘으면 빨간색)</span>
     <span>요일 막대 = 시간대별 같이 일하는 인원: ${COUNT_COLORS.slice(1).map((c, i) => `<i style="background:${c}"></i>${i + 1}${i === COUNT_COLORS.length - 2 ? '+' : ''}`).join(' ')}</span>
@@ -2593,7 +2736,7 @@ function renderScheduleToday(thisWeek) {
   el.innerHTML = groups.map(({ emp, shift, list }) => {
     const doneCount = list.filter(x => x.a.done).length;
     return `<div class="sched-today-group">
-      <div class="who">${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}
+      <div class="who" style="border-left:5px solid ${empColor(emp.id)}; padding-left:8px"><span class="emp-dot" style="background:${empColor(emp.id)}"></span> ${escapeHtml(emp.avatar || '')} ${escapeHtml(emp.name)}
         <span style="font-size:13px; color:var(--sub); font-weight:600; margin-left:4px">${fmtShift(shift)}</span>
         <span class="badge">${doneCount}/${list.length}</span></div>
       ${list.map(({ a, t }) => `
