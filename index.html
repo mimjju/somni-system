@@ -365,6 +365,7 @@
     <h1 style="margin:0"><span style="display:inline-block">🥄</span> 솜리 베이킹실 통합 관리 시스템</h1>
     <div class="field-row" style="gap:6px; margin-bottom:0">
       <a href="cafe-pickup.html"><button class="secondary" type="button">📦 카페 출고 페이지</button></a>
+      <span id="mode-badge" class="badge" style="align-self:center; font-size:13px; padding:6px 12px"></span>
       <button class="secondary" onclick="lockApp()">🔒 잠그기</button>
     </div>
   </div>
@@ -968,8 +969,26 @@
     </div>
 
     <div class="card">
-      <h2>계정 안내</h2>
-      <div class="hint">비밀번호 변경은 Supabase 대시보드 → Authentication → Users에서 admin@somri.local / staff@somri.local 계정을 선택해 직접 바꿔주세요. 이 앱 안에서는 더 이상 비밀번호를 관리하지 않습니다.</div>
+      <h2>🔑 비밀번호 관리</h2>
+      <div class="hint">로그인 화면에서 <b>관리자 비밀번호</b>를 넣으면 관리자 화면, <b>직원 비밀번호</b>를 넣으면 직원 화면(원재료·원가·발주·대시보드 숨김)으로 들어가요. 두 비밀번호는 서로 달라야 해요. 바꾸면 다음 로그인부터 적용돼요.</div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>직원용 새 비밀번호 (6자 이상)</label>
+          <input id="pw-staff" type="password" autocomplete="new-password" placeholder="직원들에게 알려줄 비밀번호">
+        </div>
+        <div class="field" style="max-width:170px">
+          <button class="primary" onclick="changeAccountPassword('staff')">직원 비밀번호 바꾸기</button>
+        </div>
+      </div>
+      <div class="field-row" style="align-items:flex-end">
+        <div class="field">
+          <label>관리자용 새 비밀번호 (6자 이상)</label>
+          <input id="pw-admin" type="password" autocomplete="new-password" placeholder="민서 님만 아는 비밀번호">
+        </div>
+        <div class="field" style="max-width:170px">
+          <button class="secondary" onclick="changeAccountPassword('admin')">관리자 비밀번호 바꾸기</button>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -1192,6 +1211,9 @@ async function loadAllData() {
 
 function applyAdminVisibility() {
   document.getElementById('tab-dashboard-btn').style.display = adminMode ? '' : 'none';
+  const badge = document.getElementById('mode-badge');
+  badge.textContent = adminMode ? '👑 관리자 모드' : '🧑‍🍳 직원 모드';
+  badge.className = adminMode ? 'badge points' : 'badge';
   // 직원 계정: 원재료 재고·발주·원가·레시피 관리 화면은 숨기고, 레시피북은 관리자가 공개한 레시피만
   ['tab-recipeform-btn', 'tab-inventory-btn', 'tab-po-btn', 'tab-ai-btn'].forEach(id => {
     document.getElementById(id).style.display = adminMode ? '' : 'none';
@@ -1956,6 +1978,23 @@ function copyOrderText(elId) {
     () => toast('발주 목록을 복사했어요.'),
     () => prompt('아래 내용을 복사해주세요.', text)
   );
+}
+
+// ---------- 비밀번호 관리 (관리자) ----------
+async function changeAccountPassword(target) {
+  const input = document.getElementById(target === 'admin' ? 'pw-admin' : 'pw-staff');
+  const pw = input.value;
+  if (pw.length < 6) { toast('비밀번호는 6자 이상이어야 해요.'); return; }
+  const who = target === 'admin' ? '관리자' : '직원';
+  if (!confirm(`${who} 비밀번호를 바꿀까요? 다음 로그인부터 새 비밀번호로 들어가야 해요.`)) return;
+  const { error } = await sb.rpc('set_account_password', { p_target: target, p_password: pw });
+  if (error) {
+    const missing = /set_account_password/.test(error.message) && /(find|exist)/i.test(error.message);
+    toast(missing ? '16번 SQL을 먼저 실행해주세요.' : '변경 실패: ' + error.message);
+    return;
+  }
+  input.value = '';
+  toast(`${who} 비밀번호를 바꿨어요.`);
 }
 
 // ---------- 솜리AI (발주 계산) ----------
