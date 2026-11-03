@@ -237,6 +237,9 @@
   .sched-chip.pro { background: #F6C9A6; color: #7A3510; border-color: #E9A877; }
   .sched-chip.expert { background: #8E2F12; color: #fff; border-color: #6E220C; }
   .sched-chip.expert .bt { color: #8E2F12; }
+  .sched-chip.emp .bt { color: var(--text); }
+  .sched-chip .lvmark { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 0 4px; border-radius: 3px; background: rgba(255,255,255,0.3); margin-left: 2px; text-decoration: none; }
+  .sched-chip.done .lvmark { background: rgba(0,0,0,0.06); }
   /* 작업 목록: 난이도별 펼치기/접기 */
   .lv-group { margin-bottom: 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; }
   .lv-group summary { cursor: pointer; padding: 8px 10px; font-weight: 800; font-size: 13.5px; display: flex; align-items: center; gap: 6px; list-style: none; }
@@ -2646,10 +2649,12 @@ function headcountBar(shifts) {
   return `<div class="wk-bar">${cells}</div><div class="wk-bar-axis"><span>${start / 60}시</span><span>${end / 60}시</span></div>`;
 }
 
-function taskChip(a, t) {
+// 작업 칸은 그 직원 색으로 칠하고, 난이도는 작은 표시로
+function taskChip(a, t, color) {
   const bt = t.recipeId ? `<span class="bt" ${adminMode ? `onclick="event.stopPropagation(); editAssignmentBatches('${a.id}')" title="배합 수 바꾸기"` : ''}>${fmtQty(assignmentBatches(a))}배합</span>` : '';
-  return `<div class="sched-chip ${a.done ? 'done' : t.level}" onclick="event.stopPropagation(); toggleAssignmentDone('${a.id}')" title="${escapeHtml(t.memo || '눌러서 완료 체크')}">
-    <span>${a.done ? '✓ ' : ''}${escapeHtml(t.name)}</span>${bt}
+  const style = a.done ? '' : `style="background:${color}; border-color:${color}; color:#fff"`;
+  return `<div class="sched-chip emp ${a.done ? 'done' : ''}" ${style} onclick="event.stopPropagation(); toggleAssignmentDone('${a.id}')" title="${escapeHtml(`${levelLabel(t.level)} · ${t.memo || '눌러서 완료 체크'}`)}">
+    <span>${a.done ? '✓ ' : ''}${escapeHtml(t.name)} <span class="lvmark">${levelLabel(t.level)}</span></span>${bt}
     ${adminMode ? `<button class="x" onclick="event.stopPropagation(); removeAssignment('${a.id}')" title="빼기">✕</button>` : ''}
   </div>`;
 }
@@ -2689,7 +2694,7 @@ function renderScheduleWeek(week) {
       return `<td class="sched-cell ${shift ? '' : 'off'} ${adminMode ? 'clickable' : ''} ${day === todayIdx ? 'today' : ''}"
         style="border-left:5px solid ${color}; ${shift ? `background:${color}14;` : ''}"
         ${adminMode ? `onclick="addAssignment('${emp.id}', ${day})"` : ''}>
-        ${tasks.map(({ a, t }) => taskChip(a, t)).join('')}
+        ${tasks.map(({ a, t }) => taskChip(a, t, color)).join('')}
         <div class="sched-foot ${min > hours * 60 ? 'over' : ''}">${tasks.length ? `${fmtQty(min / 60)}h / ` : ''}${shiftHtml}</div>
       </td>`;
     }).join('');
@@ -2713,10 +2718,7 @@ function renderScheduleWeek(week) {
     <tbody>${rows}${totalRow}</tbody>
   </table>
   <div class="wk-legend">
-    <span><i style="background:var(--accent-light)"></i>쉬움</span>
-    <span><i style="background:#F6C9A6"></i>숙련</span>
-    <span><i style="background:#8E2F12"></i>전문가</span>
-    <span>이름 칸·왼쪽 줄 = 직원 색 (관리자는 🎨로 변경)</span>
+    <span>작업 칸·이름 칸 색 = 직원 색 (관리자는 🎨로 변경), 작업 안 작은 글씨 = 난이도</span>
     <span><i style="background:#EFE8E1"></i>완료·휴무</span>
     <span>칸 아래 = 작업시간 / 근무시간 (넘으면 빨간색)</span>
     <span>요일 막대 = 시간대별 같이 일하는 인원: ${COUNT_COLORS.slice(1).map((c, i) => `<i style="background:${c}"></i>${i + 1}${i === COUNT_COLORS.length - 2 ? '+' : ''}`).join(' ')}</span>
@@ -2740,7 +2742,7 @@ function renderScheduleToday(thisWeek) {
         <span style="font-size:13px; color:var(--sub); font-weight:600; margin-left:4px">${fmtShift(shift)}</span>
         <span class="badge">${doneCount}/${list.length}</span></div>
       ${list.map(({ a, t }) => `
-        <div class="sched-today-item ${a.done ? 'done' : ''}" onclick="toggleAssignmentDone('${a.id}')">
+        <div class="sched-today-item ${a.done ? 'done' : ''}" style="border-left:5px solid ${empColor(emp.id)}" onclick="toggleAssignmentDone('${a.id}')">
           <span class="box">${a.done ? '✓' : ''}</span>
           <span style="flex:1">${escapeHtml(t.name)}${t.recipeId ? ` · ${fmtQty(assignmentBatches(a))}배합` : ''}
             ${t.memo ? `<div style="font-size:12.5px; color:var(--sub); font-weight:500">${escapeHtml(t.memo)}</div>` : ''}</span>
