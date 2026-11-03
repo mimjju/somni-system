@@ -297,6 +297,18 @@
   .shift-input { width: 96px; padding: 5px 6px; font-size: 13.5px; text-align: center; }
   .shift-input.off { background: #EFE8E1; }
 
+  /* 솜리AI */
+  .ai-input-row { display: flex; gap: 8px; align-items: stretch; }
+  .ai-input-row textarea { flex: 1; resize: vertical; font-family: inherit; font-size: 16px; }
+  .ai-examples { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .ai-examples button { border: 1px solid var(--border); background: #fff; border-radius: 16px; padding: 6px 12px; font-size: 13.5px; cursor: pointer; color: var(--accent-dark); font-weight: 600; font-family: inherit; }
+  .ai-examples button:hover { border-color: var(--accent); background: var(--accent-light); }
+  .ai-q { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+  .ai-q span { background: var(--accent); color: #fff; padding: 9px 14px; border-radius: 14px 14px 2px 14px; font-weight: 600; max-width: 80%; white-space: pre-wrap; }
+  .ai-a .say { font-size: 15.5px; line-height: 1.8; margin-bottom: 12px; }
+  .ai-a .say b.short { color: var(--danger); }
+  .ai-a .say b.ok { color: var(--accent-dark); }
+
   /* 레시피북 */
   .rb-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
   .rb-tile { border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; cursor: pointer; padding: 0; overflow: hidden; text-align: left; font-family: inherit; }
@@ -336,6 +348,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="schedule">주간 스케줄</button>
+    <button class="tab-btn" id="tab-ai-btn" data-tab="ai" style="display:none">🤖 솜리AI 발주</button>
     <button class="tab-btn" id="tab-inventory-btn" data-tab="inventory" style="display:none">원재료 재고</button>
     <button class="tab-btn" data-tab="recipe-book">레시피북</button>
     <button class="tab-btn" id="tab-recipeform-btn" data-tab="recipe-form" style="display:none">레시피 관리·원가</button>
@@ -446,6 +459,20 @@
         <div id="sched-cafe-days"></div>
       </div>
     </div>
+  </div>
+
+  <!-- 솜리AI 발주 -->
+  <div class="panel" id="panel-ai">
+    <div class="card">
+      <h2>🤖 솜리AI · 발주 계산</h2>
+      <div class="hint">말로 물어보면 등록된 레시피·재고·스케줄로 계산해서 무엇을 몇 개 발주해야 하는지 알려줘요. 레시피 이름과 배합 수(또는 개수)를 넣어주세요. 예: "바스크 2배합, 말차바스크 3배합 할 건데 생크림이랑 크림치즈 얼마나 필요해?"</div>
+      <div class="ai-input-row">
+        <textarea id="ai-input" rows="2" placeholder="예: 이번 주 스케줄대로 하면 뭐 발주해야 돼?"></textarea>
+        <button class="primary" onclick="askSomriAI()">물어보기</button>
+      </div>
+      <div id="ai-examples" class="ai-examples"></div>
+    </div>
+    <div id="ai-log"></div>
   </div>
 
   <!-- 레시피북 -->
@@ -1141,7 +1168,7 @@ async function loadAllData() {
 function applyAdminVisibility() {
   document.getElementById('tab-dashboard-btn').style.display = adminMode ? '' : 'none';
   // 직원 계정: 원재료 재고·발주·원가·레시피 관리 화면은 숨기고, 레시피북은 관리자가 공개한 레시피만
-  ['tab-recipeform-btn', 'tab-inventory-btn', 'tab-po-btn'].forEach(id => {
+  ['tab-recipeform-btn', 'tab-inventory-btn', 'tab-po-btn', 'tab-ai-btn'].forEach(id => {
     document.getElementById(id).style.display = adminMode ? '' : 'none';
   });
   document.getElementById('employee-manage-card').style.display = adminMode ? 'block' : 'none';
@@ -1151,7 +1178,7 @@ function applyAdminVisibility() {
   document.getElementById('rb-calc-card').style.display = adminMode ? 'block' : 'none';
   if (!adminMode) {
     const activePanel = document.querySelector('.panel.active');
-    const adminOnlyPanels = ['panel-dashboard', 'panel-recipe-form', 'panel-inventory', 'panel-po'];
+    const adminOnlyPanels = ['panel-dashboard', 'panel-recipe-form', 'panel-inventory', 'panel-po', 'panel-ai'];
     if (activePanel && adminOnlyPanels.includes(activePanel.id)) switchTab('schedule');
   }
 }
@@ -1204,6 +1231,7 @@ function switchTab(tab) {
   document.getElementById('panel-' + tab).classList.add('active');
   if (tab === 'schedule') renderSchedule();
   if (tab === 'recipe-book') renderRecipeBook();
+  if (tab === 'ai') renderAiExamples();
   if (tab === 'recipe-form') { populateIngredientSelect(); renderRecipeAccessList(); renderRecipeList(); }
   if (tab === 'inventory') { populateStockSelect(); renderIngredients(); renderInventoryLog(); renderLowStockAlerts(); populateSupplierSelects(); }
   if (tab === 'finished-goods') renderFinishedGoods();
@@ -1903,6 +1931,197 @@ function copyOrderText(elId) {
     () => toast('발주 목록을 복사했어요.'),
     () => prompt('아래 내용을 복사해주세요.', text)
   );
+}
+
+// ---------- 솜리AI (발주 계산) ----------
+// 외부 AI 없이 문장에서 레시피·배합 수·재료·기간을 찾아 calcIngredientNeeds로 계산해요.
+let aiCount = 0;
+const AI_NUM_WORDS = { 한: 1, 하나: 1, 두: 2, 둘: 2, 세: 3, 셋: 3, 네: 4, 넷: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10 };
+const AI_PARTICLES = /(이랑|랑|하고|이나|나|을|를|은|는|이|가|과|와|도|만|의|에|로|으로|양|량)$/;
+const AI_EXAMPLES = [
+  '이번 주 스케줄대로 하면 뭐 발주해야 돼?',
+  '재고 부족한 거 알려줘',
+  '다음 주 발주 계산해줘'
+];
+
+function compactName(s) { return String(s).replace(/\s+/g, '').toLowerCase(); }
+
+function aiExact(list, name) {
+  const n = compactName(name);
+  return n.length >= 2 ? list.find(x => compactName(x.name) === n) || null : null;
+}
+
+function aiMatch(list, name) {
+  const n = compactName(name);
+  if (n.length < 2) return null;
+  const exact = aiExact(list, name);
+  if (exact) return exact;
+  const starts = list.filter(x => compactName(x.name).startsWith(n));
+  if (starts.length === 1) return starts[0];
+  const inc = list.filter(x => compactName(x.name).includes(n));
+  if (inc.length === 1) return inc[0];
+  // "말차바스크치즈케이크"처럼 길게 쓴 경우: 이름이 문장 조각 안에 들어 있으면 가장 긴 것
+  const within = list.filter(x => compactName(x.name).length >= 2 && n.includes(compactName(x.name)));
+  return within.sort((a, b) => compactName(b.name).length - compactName(a.name).length)[0] || null;
+}
+
+function aiParseQty(str) {
+  const m = String(str).match(/^(\d+(?:\.\d+)?|한|하나|두|둘|세|셋|네|넷|다섯|여섯|일곱|여덟|아홉|열)\s*(배합|배|판|개|박스|batch)?$/);
+  if (!m) return null;
+  return { qty: AI_NUM_WORDS[m[1]] ?? parseFloat(m[1]), unit: m[2] || '' };
+}
+
+function aiParse(text) {
+  const tokens = text.replace(/[,，.?!·\/()]/g, ' ').split(/\s+/).filter(Boolean);
+  const plan = [], ings = [], unknown = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    // "바스크2배합" 처럼 이름과 숫자가 붙어 있으면 나눠요
+    const glued = tok.match(/^(.+?)(\d+(?:\.\d+)?)(배합|배|판|개|박스)?.*$/);
+    let name = (glued ? glued[1] : tok).replace(AI_PARTICLES, '');
+    let qty = glued ? { qty: parseFloat(glued[2]), unit: glued[3] || '' } : null;
+    // 이름이 정확히 같은 게 먼저: 레시피 → 재료, 그다음 비슷한 이름: 레시피 → 재료
+    const exactIng = aiExact(ingredients, name);
+    const r = aiExact(recipes, name) || (exactIng ? null : aiMatch(recipes, name));
+    if (r) {
+      if (!qty && tokens[i + 1]) {
+        qty = aiParseQty(tokens[i + 1]);
+        if (!qty && tokens[i + 2] && /^(한|하나|두|둘|세|셋|네|넷|다섯|여섯|일곱|여덟|아홉|열|\d+(?:\.\d+)?)$/.test(tokens[i + 1])) {
+          qty = aiParseQty(tokens[i + 1] + tokens[i + 2]);
+          if (qty) i++;
+        }
+        if (qty) i++;
+      }
+      const isPieces = qty && qty.unit === '개';
+      const batches = !qty ? 1 : isPieces ? qty.qty / (r.yieldQty || 1) : qty.qty;
+      const existing = plan.find(p => p.recipeId === r.id);
+      if (existing) existing.batches += batches;
+      else plan.push({ recipeId: r.id, batches, guessed: !qty, pieces: isPieces ? qty.qty : null });
+      continue;
+    }
+    const ing = exactIng || aiMatch(ingredients, name);
+    if (ing && !ings.includes(ing)) { ings.push(ing); continue; }
+    if (name.length >= 2) unknown.push(name);
+  }
+  return {
+    plan, ings, unknown,
+    thisWeek: /이번\s*주|이번주|금주/.test(text),
+    nextWeek: /다음\s*주|다음주|담주/.test(text),
+    lowStock: /부족|모자|떨어|없는/.test(text),
+    order: /발주|주문|시켜|사야/.test(text)
+  };
+}
+
+function lowStockItems() {
+  return ingredients.filter(ing => ing.minStock != null && (ing.stock ?? 0) <= ing.minStock);
+}
+
+function renderAiExamples() {
+  const ex = [...AI_EXAMPLES];
+  if (recipes.length >= 2) ex.splice(1, 0, `${recipes[0].name} 2배합, ${recipes[1].name} 3배합 하면 뭐 부족해?`);
+  else if (recipes.length === 1) ex.splice(1, 0, `${recipes[0].name} 3배합 하면 재료 충분해?`);
+  document.getElementById('ai-examples').innerHTML = ex.map(q =>
+    `<button type="button" onclick="askSomriAI(${escapeHtml(JSON.stringify(q))})">${escapeHtml(q)}</button>`).join('');
+}
+
+document.getElementById('ai-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); askSomriAI(); }
+});
+
+async function askSomriAI(preset) {
+  const input = document.getElementById('ai-input');
+  const text = (preset ?? input.value).trim();
+  if (!text) { toast('물어볼 내용을 입력해주세요.'); return; }
+  input.value = '';
+  const q = aiParse(text);
+
+  // 기간이 들어가면 그 주 스케줄의 생산량을 더해요
+  const weekPlans = [];
+  for (const [flag, start, label] of [[q.thisWeek, mondayOf(todayStr()), '이번 주'], [q.nextWeek, addDays(mondayOf(todayStr()), 7), '다음 주']]) {
+    if (!flag) continue;
+    const week = await ensureScheduleWeek(start);
+    weekPlans.push({ label, plan: week ? schedulePlanFor(week.assignments) : [] });
+  }
+  const plan = q.plan.map(p => ({ recipeId: p.recipeId, batches: p.batches }));
+  weekPlans.forEach(w => w.plan.forEach(p => {
+    const ex = plan.find(x => x.recipeId === p.recipeId);
+    if (ex) ex.batches += p.batches; else plan.push({ ...p });
+  }));
+
+  const id = 'ai-res-' + (++aiCount);
+  const says = [];
+  const needs = calcIngredientNeeds(plan);
+  const unit = ing => escapeHtml(ing.purchaseUnit);
+
+  if (q.plan.length) {
+    says.push('📋 계산한 생산: ' + q.plan.map(p => {
+      const r = recipes.find(rc => rc.id === p.recipeId);
+      return `<b>${escapeHtml(r.name)} ${fmtQty(p.batches)}배합</b>${p.pieces ? ` (${fmtQty(p.pieces)}개 기준)` : ''}${p.guessed ? ' (배합 수가 없어서 1배합으로 계산)' : ''}`;
+    }).join(', '));
+  }
+  weekPlans.forEach(w => {
+    says.push(w.plan.length
+      ? `🗓 ${w.label} 스케줄: ` + w.plan.map(p => `${escapeHtml(recipes.find(r => r.id === p.recipeId)?.name || '?')} ${fmtQty(p.batches)}배합`).join(', ')
+      : `🗓 ${w.label} 스케줄에는 레시피가 연결된 작업이 없어요. (작업 목록에서 레시피를 연결해야 계산돼요)`);
+  });
+
+  // 물어본 재료가 있으면 그 재료부터 콕 집어서
+  q.ings.forEach(ing => {
+    const n = needs.find(x => x.ing.id === ing.id);
+    const stockBase = (ing.stock ?? 0) * (ing.purchaseQty || 1);
+    if (n) {
+      says.push(`• <b>${escapeHtml(ing.name)}</b>: ${fmtQty(n.need)}${unit(ing)} 필요, 재고 ${fmtQty(ing.stock ?? 0)}개(${fmtQty(stockBase)}${unit(ing)}) → ` +
+        (n.packs > 0 ? `<b class="short">${fmtQty(n.short)}${unit(ing)} 부족, ${n.packs}개 발주</b>` : '<b class="ok">충분해요</b>'));
+    } else if (plan.length) {
+      says.push(`• <b>${escapeHtml(ing.name)}</b>: 이 제품들에는 안 들어가요. 재고 ${fmtQty(ing.stock ?? 0)}개(${fmtQty(stockBase)}${unit(ing)})`);
+    } else {
+      says.push(`• <b>${escapeHtml(ing.name)}</b> 재고: ${fmtQty(ing.stock ?? 0)}개 (${fmtQty(stockBase)}${unit(ing)})${ing.minStock != null ? `, 부족 기준 ${fmtQty(ing.minStock)}개` : ''}`);
+    }
+  });
+
+  if (plan.length) {
+    const short = needs.filter(n => n.packs > 0);
+    says.push(short.length
+      ? `🛒 <b class="short">발주가 필요한 재료 ${short.length}개</b>: ` + short.map(n => `${escapeHtml(n.ing.name)} ${n.packs}개`).join(', ')
+      : '✅ <b class="ok">지금 재고로 다 만들 수 있어요.</b>');
+  }
+
+  // "부족/발주"를 물었거나 계산할 게 없으면 부족 기준 이하 재료도 알려줘요
+  const low = lowStockItems().filter(ing => !needs.some(n => n.ing.id === ing.id && n.packs > 0));
+  const showLow = q.lowStock || (q.order && !q.plan.length);
+  if (showLow) {
+    says.push(low.length
+      ? `⚠ 재고 부족 기준 이하: ` + low.map(ing => `${escapeHtml(ing.name)} (재고 ${fmtQty(ing.stock ?? 0)}개 / 기준 ${fmtQty(ing.minStock)}개 → 최소 ${Math.max(1, Math.ceil(ing.minStock - (ing.stock ?? 0)))}개)`).join(', ')
+      : '👍 부족 기준 이하로 떨어진 재료는 없어요.');
+  }
+
+  if (!says.length) {
+    says.push('잘 못 알아들었어요 😅 레시피 이름과 배합 수를 넣어서 물어봐 주세요.');
+    says.push('등록된 레시피: ' + (recipes.length ? recipes.map(r => escapeHtml(r.name)).join(', ') : '(없음)'));
+  } else if (q.unknown.length && !q.plan.length && !weekPlans.length && !q.ings.length && !showLow) {
+    says.push(`"${escapeHtml(q.unknown.slice(0, 3).join(', '))}"은(는) 등록된 레시피·재료에서 못 찾았어요.`);
+  }
+
+  const card = document.createElement('div');
+  card.className = 'card ai-a';
+  card.innerHTML = `
+    <div class="ai-q"><span>${escapeHtml(text)}</span></div>
+    <div class="say">${says.join('<br>')}</div>
+    ${plan.length ? `<div id="${id}"></div>` : ''}
+    ${showLow && low.length ? `<div class="field-row" style="margin-top:10px"><button class="secondary" onclick="copyLowStockText()">📋 부족 기준 재료 목록 복사</button></div>` : ''}`;
+  document.getElementById('ai-log').prepend(card);
+  if (plan.length) renderNeedsTable(id, plan);
+}
+
+function copyLowStockText() {
+  const groups = {};
+  lowStockItems().forEach(ing => {
+    const sup = suppliers.find(s => s.id === ing.supplierId);
+    const key = sup ? sup.name : '거래처 미지정';
+    (groups[key] = groups[key] || []).push(`- ${ing.name} × ${Math.max(1, Math.ceil(ing.minStock - (ing.stock ?? 0)))}개 (재고 ${fmtQty(ing.stock ?? 0)} / 기준 ${fmtQty(ing.minStock)})`);
+  });
+  const text = Object.entries(groups).map(([k, lines]) => `[${k}]\n${lines.join('\n')}`).join('\n\n');
+  navigator.clipboard.writeText(text).then(() => toast('복사했어요.'), () => prompt('아래 내용을 복사해주세요.', text));
 }
 
 // ---------- 레시피북 ----------
