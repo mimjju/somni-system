@@ -238,6 +238,11 @@
   .sched-chip.expert { background: #8E2F12; color: #fff; border-color: #6E220C; }
   .sched-chip.expert .bt { color: #8E2F12; }
   .sched-chip.emp .bt { color: var(--text); }
+  .sched-chip.emp { display: block; }
+  .sched-chip.emp .top { display: flex; align-items: flex-start; gap: 4px; }
+  .sched-chip.emp .top .nm { flex: 1; word-break: keep-all; overflow-wrap: anywhere; }
+  .sched-chip.emp .tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+  .sched-chip.emp .lvmark { margin-left: 0; }
   .sched-chip .lvmark { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 0 4px; border-radius: 3px; background: rgba(255,255,255,0.3); margin-left: 2px; text-decoration: none; }
   .sched-chip.done .lvmark { background: rgba(0,0,0,0.06); }
   /* 작업 목록: 난이도별 펼치기/접기 */
@@ -407,7 +412,7 @@
         </div>
       </div>
       <div id="sched-admin-tools" style="display:none; margin-top:14px">
-        <div class="hint" style="margin:0 0 10px">① 왼쪽 작업 목록에서 작업을 고르고 ② 표에서 <b>사람 × 요일 칸</b>을 누르면 그날 할 일로 들어가요. 같은 작업을 여러 번 눌러도 돼요.<br>칸 안 작업의 ✕를 누르면 빠지고, 칸 아래 근무시간을 누르면 <b>이번 주 그날만</b> 근무시간을 바꿀 수 있어요. 작업시간이 근무시간을 넘으면 빨간색이 돼요.</div>
+        <div class="hint" style="margin:0 0 10px">① 왼쪽 작업 목록에서 작업을 고르고 ② 표에서 <b>사람 × 요일 칸</b>을 누르면 그날 할 일로 들어가요.<br>👥 <b>같은 날 같은 작업을 두 사람 이상에게 넣으면 "같이 하는 작업"</b>으로 묶여요. 한 명이 완료 체크하면 같이 완료되고, 재고는 한 번만 빠져요.<br>칸 안 작업의 ✕를 누르면 빠지고, 칸 아래 근무시간을 누르면 <b>이번 주 그날만</b> 근무시간을 바꿀 수 있어요. 작업시간이 근무시간을 넘으면 빨간색이 돼요.</div>
         <div class="field-row" style="margin:0; gap:6px">
           <button class="secondary" onclick="copyPrevWeekSchedule()">지난주 그대로 복사</button>
           <button class="secondary" onclick="clearWeekSchedule()">이번 주 비우기</button>
@@ -2491,11 +2496,29 @@ function dayTasks(week, employeeId, day) {
     .filter(x => x.t);
 }
 
+function hasSameAssignment(employeeId, day, taskId) {
+  return schedWeekCache[schedWeekStart].assignments.some(x => x.day === day && x.taskId === taskId && x.employeeId === employeeId);
+}
+
+// 같은 날 같은 작업을 여러 명에게 넣으면 "같이 하는 작업" 하나로 봐요
+function taskGroup(a) {
+  const week = schedWeekCache[a.weekStart];
+  return week ? week.assignments.filter(x => x.day === a.day && x.taskId === a.taskId) : [a];
+}
+function partnerNames(a) {
+  return taskGroup(a).filter(x => x.employeeId !== a.employeeId)
+    .map(x => employees.find(e => e.id === x.employeeId)?.name).filter(Boolean);
+}
+
 function schedulePlanFor(assignments) {
   const plan = [];
+  const seen = new Set();
   assignments.forEach(a => {
     const t = schedTasks.find(tk => tk.id === a.taskId);
     if (!t || !t.recipeId) return;
+    const key = `${a.day}|${a.taskId}`;
+    if (seen.has(key)) return; // 같이 하는 작업은 한 번만
+    seen.add(key);
     const existing = plan.find(p => p.recipeId === t.recipeId);
     if (existing) existing.batches += assignmentBatches(a);
     else plan.push({ recipeId: t.recipeId, batches: assignmentBatches(a) });
@@ -2691,10 +2714,17 @@ function headcountBar(shifts) {
 // 작업 칸은 그 직원 색으로 칠하고, 난이도는 작은 표시로
 function taskChip(a, t, color) {
   const bt = t.recipeId ? `<span class="bt" ${adminMode ? `onclick="event.stopPropagation(); editAssignmentBatches('${a.id}')" title="배합 수 바꾸기"` : ''}>${fmtQty(assignmentBatches(a))}배합</span>` : '';
-  const style = a.done ? '' : `style="background:${color}; border-color:${color}; color:#fff"`;
-  return `<div class="sched-chip emp ${a.done ? 'done' : ''}" ${style} onclick="event.stopPropagation(); toggleAssignmentDone('${a.id}')" title="${escapeHtml(`${levelLabel(t.level)} · ${t.memo || '눌러서 완료 체크'}`)}">
-    <span>${a.done ? '✓ ' : ''}${escapeHtml(t.name)} <span class="lvmark">${levelLabel(t.level)}</span></span>${bt}
-    ${adminMode ? `<button class="x" onclick="event.stopPropagation(); removeAssignment('${a.id}')" title="빼기">✕</button>` : ''}
+  const partners = partnerNames(a);
+  const partnerColor = partners.length ? empColor(taskGroup(a).find(x => x.employeeId !== a.employeeId).employeeId) : null;
+  // 같이 하는 작업: 함께하는 사람 색 점선 테두리 + "같이: 이름"
+  const style = a.done
+    ? (partners.length ? `style="border:2px dashed ${partnerColor}"` : '')
+    : `style="background:${color}; color:#fff; ${partners.length ? `border:3px dashed ${partnerColor}` : `border-color:${color}`}"`;
+  return `<div class="sched-chip emp ${a.done ? 'done' : ''}" ${style} onclick="event.stopPropagation(); toggleAssignmentDone('${a.id}')" title="${escapeHtml(`${levelLabel(t.level)} · ${partners.length ? `같이: ${partners.join(', ')} · ` : ''}${t.memo || '눌러서 완료 체크'}`)}">
+    <div class="top"><span class="nm">${a.done ? '✓ ' : ''}${escapeHtml(t.name)}</span>
+      ${adminMode ? `<button class="x" onclick="event.stopPropagation(); removeAssignment('${a.id}')" title="빼기">✕</button>` : ''}</div>
+    <div class="tags"><span class="lvmark">${levelLabel(t.level)}</span>${bt}
+      ${partners.length ? `<span class="lvmark">👥 같이: ${escapeHtml(partners.join(', '))}</span>` : ''}</div>
   </div>`;
 }
 
@@ -2783,7 +2813,8 @@ function renderScheduleToday(thisWeek) {
       ${list.map(({ a, t }) => `
         <div class="sched-today-item ${a.done ? 'done' : ''}" style="border-left:5px solid ${empColor(emp.id)}" onclick="toggleAssignmentDone('${a.id}')">
           <span class="box">${a.done ? '✓' : ''}</span>
-          <span style="flex:1">${escapeHtml(t.name)}${t.recipeId ? ` · ${fmtQty(assignmentBatches(a))}배합` : ''}
+          <span style="flex:1">${partnerNames(a).length ? '👥 ' : ''}${escapeHtml(t.name)}${t.recipeId ? ` · ${fmtQty(assignmentBatches(a))}배합` : ''}
+            ${partnerNames(a).length ? `<span class="badge" style="text-decoration:none">같이: ${escapeHtml(partnerNames(a).join(', '))}</span>` : ''}
             ${t.memo ? `<div style="font-size:12.5px; color:var(--sub); font-weight:500">${escapeHtml(t.memo)}</div>` : ''}</span>
           <span class="lv ${t.level}">${levelLabel(t.level)}</span>
           <span style="font-size:12.5px; color:var(--sub)">${fmtMinutes(t.minutes)}</span>
@@ -2803,10 +2834,14 @@ function findAssignment(id) {
 async function addAssignment(employeeId, day) {
   if (!schedSelectedTaskId) { toast('위에서 작업을 먼저 골라주세요.'); return; }
   const t = schedTasks.find(tk => tk.id === schedSelectedTaskId);
+  // 같은 날 이미 누가 하고 있는 작업이면 "같이 하는 작업"으로 배합 수를 맞춰요
+  const joined = schedWeekCache[schedWeekStart].assignments.find(x => x.day === day && x.taskId === t.id);
+  if (hasSameAssignment(employeeId, day, t.id)) { toast('그날 이 사람에게 이미 들어 있는 작업이에요. 양이 많으면 배합 수를 늘려주세요.'); return; }
   const { data, error } = await sb.from('schedule_assignments').insert({
-    week_start: schedWeekStart, day, employee_id: employeeId, task_id: t.id, batches: t.batches ?? null
+    week_start: schedWeekStart, day, employee_id: employeeId, task_id: t.id, batches: joined ? joined.batches ?? null : t.batches ?? null
   }).select().single();
   if (error) { toast('배정 실패: ' + error.message); return; }
+  if (joined) toast(`👥 ${employees.find(e => e.id === joined.employeeId)?.name || ''}님과 같이 하는 작업으로 묶었어요.`);
   schedWeekCache[schedWeekStart].assignments.push({ id: data.id, weekStart: schedWeekStart, day, employeeId, taskId: t.id, batches: data.batches, done: false, workLogId: null });
   renderSchedule();
 }
@@ -2825,6 +2860,9 @@ async function toggleAssignmentDone(id) {
   const a = findAssignment(id);
   if (!a || schedToggleBusy) return;
   const t = schedTasks.find(tk => tk.id === a.taskId);
+  const group = taskGroup(a); // 같이 하는 작업이면 함께한 사람들 것까지
+  const ids = group.map(x => x.id);
+  const names = group.map(x => employees.find(e => e.id === x.employeeId)?.name).filter(Boolean);
   schedToggleBusy = true;
   try {
     if (!a.done) {
@@ -2834,31 +2872,34 @@ async function toggleAssignmentDone(id) {
         if (date > todayStr() && !confirm(`${shortDate(date)} 작업이에요 (아직 안 온 날). 그래도 완료로 하고 재료 재고를 차감할까요?`)) return;
         const batches = assignmentBatches(a);
         w = await createWorkLogRecord({
-          date, recipeId: t.recipeId, batches, loss: 0, note: `스케줄 완료: ${t.name}`,
-          stages: [{ stageName: t.name, employeeId: a.employeeId, timeMinutes: Number(t.minutes) || 0, qty: batches, qtyUnit: '배합' }]
+          date, recipeId: t.recipeId, batches, loss: 0,
+          note: `스케줄 완료: ${t.name}${group.length > 1 ? ` (같이: ${names.join(', ')})` : ''}`,
+          stages: group.map(x => ({ stageName: t.name, employeeId: x.employeeId, timeMinutes: Number(t.minutes) || 0, qty: batches, qtyUnit: '배합' }))
         });
         if (!w) return;
       }
-      const { error } = await sb.from('schedule_assignments').update(w ? { done: true, work_log_id: w.id } : { done: true }).eq('id', id);
+      const { error } = await sb.from('schedule_assignments').update(w ? { done: true, work_log_id: w.id } : { done: true }).in('id', ids);
       if (error) {
         if (w) await removeWorkLogRecord(w.id);
         toast(/work_log_id/.test(error.message) ? '17번 SQL을 먼저 실행해주세요.' : '저장 실패: ' + error.message);
         return;
       }
-      a.done = true;
-      a.workLogId = w ? w.id : null;
+      group.forEach(x => { x.done = true; x.workLogId = w ? w.id : null; });
       celebrate();
-      if (w) toast(`완료! 업무일지에 ${recipes.find(r => r.id === t.recipeId).name} ${fmtQty(w.batches)}배합을 기록하고 재료 재고를 차감했어요.`);
+      if (w) toast(`완료! 업무일지에 ${recipes.find(r => r.id === t.recipeId).name} ${fmtQty(w.batches)}배합${group.length > 1 ? `(${names.join('·')} 같이)` : ''}을 기록하고 재료 재고를 차감했어요.`);
+      else if (group.length > 1) toast(`👥 ${names.join('·')} 같이 완료!`);
     } else {
-      if (a.workLogId) {
-        if (!confirm('완료를 취소하면 자동으로 쓴 업무일지가 지워지고, 차감된 재료 재고가 다시 돌아가요. 취소할까요?')) return;
-        if (workLogs.some(w => w.id === a.workLogId) && !await removeWorkLogRecord(a.workLogId)) return;
+      const logIds = [...new Set(group.map(x => x.workLogId).filter(Boolean))];
+      if (logIds.length) {
+        if (!confirm(`완료를 취소하면 자동으로 쓴 업무일지가 지워지고, 차감된 재료 재고가 다시 돌아가요.${group.length > 1 ? ` (${names.join('·')} 같이 취소돼요)` : ''} 취소할까요?`)) return;
+        for (const logId of logIds) {
+          if (workLogs.some(w => w.id === logId) && !await removeWorkLogRecord(logId)) return;
+        }
       }
-      const { error } = await sb.from('schedule_assignments').update(a.workLogId ? { done: false, work_log_id: null } : { done: false }).eq('id', id);
+      const { error } = await sb.from('schedule_assignments').update(logIds.length ? { done: false, work_log_id: null } : { done: false }).in('id', ids);
       if (error) { toast('저장 실패: ' + error.message); return; }
-      if (a.workLogId) toast('완료를 취소하고 재료 재고를 되돌렸어요.');
-      a.done = false;
-      a.workLogId = null;
+      if (logIds.length) toast('완료를 취소하고 재료 재고를 되돌렸어요.');
+      group.forEach(x => { x.done = false; x.workLogId = null; });
     }
   } finally {
     schedToggleBusy = false;
@@ -2873,9 +2914,10 @@ async function editAssignmentBatches(id) {
   if (input === null) return;
   const batches = parseFloat(input);
   if (!(batches > 0)) { toast('배합 수를 올바르게 입력해주세요.'); return; }
-  const { error } = await sb.from('schedule_assignments').update({ batches }).eq('id', id);
+  const group = taskGroup(a);
+  const { error } = await sb.from('schedule_assignments').update({ batches }).in('id', group.map(x => x.id));
   if (error) { toast('저장 실패: ' + error.message); return; }
-  a.batches = batches;
+  group.forEach(x => { x.batches = batches; });
   renderSchedule();
 }
 
