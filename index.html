@@ -433,7 +433,7 @@
     <div id="sched-admin-cards" style="display:none">
       <div class="card">
         <h2 id="sched-task-form-title">작업 목록</h2>
-        <div class="hint">작업은 한 번만 등록해두면 매주 골라서 배정할 수 있어요. 레시피를 연결하면 "이번 주 필요 재료"가 자동으로 계산돼요. (예: 에그타르트 밀기 → 에그타르트 레시피, 2배합)</div>
+        <div class="hint">작업은 한 번만 등록해두면 매주 골라서 배정할 수 있어요. 레시피를 연결하면 "이번 주 필요 재료"가 자동으로 계산되고, <b>완료 체크하면 업무일지가 자동으로 써지고 재료 재고가 차감돼요.</b> (예: 에그타르트 밀기 → 에그타르트 레시피, 2배합)<br>⚠ 한 제품을 반죽·굽기처럼 여러 작업으로 나눌 땐 <b>재료를 쓰는 작업 하나에만</b> 레시피를 연결하세요. 둘 다 연결하면 재고가 두 번 빠져요.</div>
         <div class="field-row" style="align-items:flex-end">
           <div class="field">
             <label>작업명</label>
@@ -2437,7 +2437,7 @@ async function ensureScheduleWeek(weekStart, force) {
   ]);
   if (aRes.error) { toast('스케줄을 불러오지 못했어요: ' + aRes.error.message); return null; }
   schedWeekCache[weekStart] = {
-    assignments: (aRes.data || []).map(r => ({ id: r.id, day: r.day, employeeId: r.employee_id, taskId: r.task_id, batches: r.batches, done: r.done })),
+    assignments: (aRes.data || []).map(r => ({ id: r.id, weekStart, day: r.day, employeeId: r.employee_id, taskId: r.task_id, batches: r.batches, done: r.done, workLogId: r.work_log_id || null })),
     weekHours: (hRes.data || []).map(r => ({ employeeId: r.employee_id, day: r.day, start: r.start_min ?? null, end: r.end_min ?? null }))
   };
   return schedWeekCache[weekStart];
@@ -2807,7 +2807,7 @@ async function addAssignment(employeeId, day) {
     week_start: schedWeekStart, day, employee_id: employeeId, task_id: t.id, batches: t.batches ?? null
   }).select().single();
   if (error) { toast('배정 실패: ' + error.message); return; }
-  schedWeekCache[schedWeekStart].assignments.push({ id: data.id, day, employeeId, taskId: t.id, batches: data.batches, done: false });
+  schedWeekCache[schedWeekStart].assignments.push({ id: data.id, weekStart: schedWeekStart, day, employeeId, taskId: t.id, batches: data.batches, done: false, workLogId: null });
   renderSchedule();
 }
 
@@ -2818,13 +2818,51 @@ async function removeAssignment(id) {
   renderSchedule();
 }
 
+// 완료 체크: 레시피가 연결된 작업이면 업무일지를 자동으로 쓰고 재료 재고를 차감해요.
+// 완료를 취소하면 그 업무일지를 지우고 재고를 되돌려요.
+let schedToggleBusy = false;
 async function toggleAssignmentDone(id) {
   const a = findAssignment(id);
-  if (!a) return;
-  const { error } = await sb.from('schedule_assignments').update({ done: !a.done }).eq('id', id);
-  if (error) { toast('저장 실패: ' + error.message); return; }
-  a.done = !a.done;
-  if (a.done) celebrate();
+  if (!a || schedToggleBusy) return;
+  const t = schedTasks.find(tk => tk.id === a.taskId);
+  schedToggleBusy = true;
+  try {
+    if (!a.done) {
+      let w = null;
+      if (t && t.recipeId && recipes.some(r => r.id === t.recipeId)) {
+        const date = addDays(a.weekStart, a.day);
+        if (date > todayStr() && !confirm(`${shortDate(date)} 작업이에요 (아직 안 온 날). 그래도 완료로 하고 재료 재고를 차감할까요?`)) return;
+        const batches = assignmentBatches(a);
+        w = await createWorkLogRecord({
+          date, recipeId: t.recipeId, batches, loss: 0, note: `스케줄 완료: ${t.name}`,
+          stages: [{ stageName: t.name, employeeId: a.employeeId, timeMinutes: Number(t.minutes) || 0, qty: batches, qtyUnit: '배합' }]
+        });
+        if (!w) return;
+      }
+      const { error } = await sb.from('schedule_assignments').update(w ? { done: true, work_log_id: w.id } : { done: true }).eq('id', id);
+      if (error) {
+        if (w) await removeWorkLogRecord(w.id);
+        toast(/work_log_id/.test(error.message) ? '17번 SQL을 먼저 실행해주세요.' : '저장 실패: ' + error.message);
+        return;
+      }
+      a.done = true;
+      a.workLogId = w ? w.id : null;
+      celebrate();
+      if (w) toast(`완료! 업무일지에 ${recipes.find(r => r.id === t.recipeId).name} ${fmtQty(w.batches)}배합을 기록하고 재료 재고를 차감했어요.`);
+    } else {
+      if (a.workLogId) {
+        if (!confirm('완료를 취소하면 자동으로 쓴 업무일지가 지워지고, 차감된 재료 재고가 다시 돌아가요. 취소할까요?')) return;
+        if (workLogs.some(w => w.id === a.workLogId) && !await removeWorkLogRecord(a.workLogId)) return;
+      }
+      const { error } = await sb.from('schedule_assignments').update(a.workLogId ? { done: false, work_log_id: null } : { done: false }).eq('id', id);
+      if (error) { toast('저장 실패: ' + error.message); return; }
+      if (a.workLogId) toast('완료를 취소하고 재료 재고를 되돌렸어요.');
+      a.done = false;
+      a.workLogId = null;
+    }
+  } finally {
+    schedToggleBusy = false;
+  }
   renderSchedule();
 }
 
@@ -3734,31 +3772,7 @@ async function submitWorkLog() {
     celebrate();
     toast('업무일지가 수정되었습니다.');
   } else {
-    const { data, error } = await sb.from('work_logs').insert({
-      date, recipe_id: recipeId, batches, loss, note
-    }).select().single();
-    if (error) { toast('저장 실패: ' + error.message); return; }
-    if (stages.length) {
-      await sb.from('work_log_stages').insert(stages.map(s => ({
-        work_log_id: data.id, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes,
-        qty: s.qty ?? null, qty_unit: s.qtyUnit ?? null
-      })));
-    }
-    const w = { id: data.id, date, recipeId, batches, loss, note, stages };
-    workLogs.push(w);
-    await applyWorkLogStock(w);
-
-    const producedQty = recipe.yieldQty * batches - loss;
-    if (producedQty > 0) {
-      const unitCost = calcRecipeCost(recipe).perUnit;
-      const { data: fgData } = await sb.from('finished_goods_batches').insert({
-        recipe_id: recipeId, product_name: recipe.name, produced_date: date,
-        initial_qty: producedQty, remaining_qty: producedQty, unit_cost: unitCost, work_log_id: data.id
-      }).select().single();
-      if (fgData) finishedGoods.push(mapFinishedGoodsBatch(fgData));
-    }
-
-    await awardWorkLogPoints(stages);
+    if (!await createWorkLogRecord({ date, recipeId, batches, loss, note, stages })) return;
     celebrate();
     toast('업무일지가 저장되고 재고가 차감되었습니다! ✨');
   }
@@ -3770,6 +3784,63 @@ async function submitWorkLog() {
   renderLeaderboard();
   renderFinishedGoods();
   populateWorkLogSelects();
+}
+
+// 새 업무일지 저장: 일지·공정 저장 → 재료 재고 차감 → 완제품 재고 추가 → 포인트
+// (업무일지 탭과 스케줄 완료 체크가 같이 써요)
+async function createWorkLogRecord({ date, recipeId, batches, loss, note, stages }) {
+  const recipe = recipes.find(r => r.id === recipeId);
+  const { data, error } = await sb.from('work_logs').insert({
+    date, recipe_id: recipeId, batches, loss, note
+  }).select().single();
+  if (error) { toast('저장 실패: ' + error.message); return null; }
+  if (stages.length) {
+    await sb.from('work_log_stages').insert(stages.map(s => ({
+      work_log_id: data.id, stage_name: s.stageName, employee_id: s.employeeId, time_minutes: s.timeMinutes,
+      qty: s.qty ?? null, qty_unit: s.qtyUnit ?? null
+    })));
+  }
+  const w = { id: data.id, date, recipeId, batches, loss, note, stages };
+  workLogs.push(w);
+  await applyWorkLogStock(w);
+
+  const producedQty = recipe ? recipe.yieldQty * batches - loss : 0;
+  if (producedQty > 0) {
+    const unitCost = calcRecipeCost(recipe).perUnit;
+    const { data: fgData } = await sb.from('finished_goods_batches').insert({
+      recipe_id: recipeId, product_name: recipe.name, produced_date: date,
+      initial_qty: producedQty, remaining_qty: producedQty, unit_cost: unitCost, work_log_id: data.id
+    }).select().single();
+    if (fgData) finishedGoods.push(mapFinishedGoodsBatch(fgData));
+  }
+
+  await awardWorkLogPoints(stages);
+  return w;
+}
+
+// 업무일지 삭제: 재료 재고 복구 → 완제품 재고·포인트 되돌리기 → 일지 삭제
+async function removeWorkLogRecord(id) {
+  const w = workLogs.find(w => w.id === id);
+  await reverseWorkLogStock(w);
+
+  await sb.from('finished_goods_batches').delete().eq('work_log_id', id);
+  finishedGoods = finishedGoods.filter(b => b.workLogId !== id);
+
+  if (w) {
+    const uniqueEmployeeIds = [...new Set((w.stages || []).map(s => s.employeeId).filter(Boolean))];
+    for (const empId of uniqueEmployeeIds) {
+      const { error: ptErr } = await sb.rpc('add_employee_points', { p_employee_id: empId, p_amount: -POINTS_PER_STAGE });
+      if (ptErr) continue;
+      const emp = employees.find(e => e.id === empId);
+      if (emp) emp.points = Math.max(0, (emp.points || 0) - POINTS_PER_STAGE);
+    }
+  }
+
+  const { error } = await sb.from('work_logs').delete().eq('id', id);
+  if (error) { toast('삭제 실패: ' + error.message); return false; }
+  await refreshIngredientsAndLogs();
+  workLogs = workLogs.filter(w => w.id !== id);
+  return true;
 }
 
 const POINTS_PER_STAGE = 10;
@@ -3851,26 +3922,7 @@ function editWorkLog(id) {
 
 async function deleteWorkLog(id) {
   if (!confirm('이 업무일지를 삭제하시겠습니까? 차감되었던 재료 재고가 복구되고, 이 기록으로 쌓였던 완제품재고와 포인트도 함께 되돌아갑니다.')) return;
-  const w = workLogs.find(w => w.id === id);
-  await reverseWorkLogStock(w);
-
-  await sb.from('finished_goods_batches').delete().eq('work_log_id', id);
-  finishedGoods = finishedGoods.filter(b => b.workLogId !== id);
-
-  if (w) {
-    const uniqueEmployeeIds = [...new Set((w.stages || []).map(s => s.employeeId).filter(Boolean))];
-    for (const empId of uniqueEmployeeIds) {
-      const { error: ptErr } = await sb.rpc('add_employee_points', { p_employee_id: empId, p_amount: -POINTS_PER_STAGE });
-      if (ptErr) continue;
-      const emp = employees.find(e => e.id === empId);
-      if (emp) emp.points = Math.max(0, (emp.points || 0) - POINTS_PER_STAGE);
-    }
-  }
-
-  const { error } = await sb.from('work_logs').delete().eq('id', id);
-  if (error) { toast('삭제 실패: ' + error.message); return; }
-  await refreshIngredientsAndLogs();
-  workLogs = workLogs.filter(w => w.id !== id);
+  if (!await removeWorkLogRecord(id)) return;
   renderWorkLogTable();
   renderIngredients();
   renderFinishedGoods();
